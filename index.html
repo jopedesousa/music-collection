@@ -768,12 +768,15 @@ async function initDashboard() {
   const csvText = document.getElementById('input-csv').value.trim();
   if (!username) { showSetupError('Please enter your Last.fm username'); return; }
 
+  // Set username BEFORE any API call so lfm() can use it
+  STATE.username = username;
+
   document.getElementById('setup-error').innerHTML = '<div class="error-msg">Connecting to Last.fm…</div>';
 
   try {
     const userInfo = await lfm('user.getInfo');
     if (userInfo.error) throw new Error(userInfo.message);
-    STATE.username = username;
+    if (!userInfo.user) throw new Error('No user data returned');
     STATE.userInfo = userInfo.user;
 
     if (csvText) STATE.collection = parseCSV(csvText);
@@ -788,7 +791,8 @@ async function initDashboard() {
     updateUserChip();
     loadHomeData();
   } catch(e) {
-    showSetupError('Could not connect to Last.fm. Check your username and try again.');
+    STATE.username = ''; // reset on failure
+    showSetupError(`Could not connect to Last.fm: ${e.message || 'Unknown error'}. Check your username and try again.`);
     console.error(e);
   }
 }
