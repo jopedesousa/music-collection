@@ -519,9 +519,9 @@ canvas { max-height: 220px !important; }
     </div>
 
     <div class="field-group">
-      <label class="field-label">Collection CSV <span style="font-weight:400;color:var(--text4)">(optional)</span></label>
-      <textarea class="field" id="input-csv" rows="4" placeholder="Paste CSV here (Artist,Album,Year,Format,My rating)&#10;Or leave blank to use Last.fm data only"></textarea>
-      <div class="field-hint">From Google Sheets: File → Download → CSV, then paste contents here. Headers: Artist, Album, Year, Format, My rating</div>
+      <label class="field-label">Google Sheets CSV URL <span style="font-weight:400;color:var(--text4)">(optional)</span></label>
+      <input class="field" id="input-csv-url" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
+      <div class="field-hint">In Google Sheets: File → Share → Publish to web → Comma-separated values → Publish. Paste that URL here.</div>
     </div>
 
     <button class="btn-primary" onclick="initDashboard()">Load Dashboard →</button>
@@ -762,10 +762,19 @@ function parseCSV(text) {
   }).filter(r => r.artist || r.album);
 }
 
+/* ─── FETCH CSV FROM URL ─── */
+async function fetchCSV(url) {
+  // Use allorigins proxy to avoid CORS issues with Google Sheets
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error(`CSV fetch failed: HTTP ${res.status}`);
+  return res.text();
+}
+
 /* ─── INIT ─── */
 async function initDashboard() {
   const username = document.getElementById('input-username').value.trim();
-  const csvText = document.getElementById('input-csv').value.trim();
+  // CSV URL is fetched later after Last.fm connection succeeds
   if (!username) { showSetupError('Please enter your Last.fm username'); return; }
 
   // Set username BEFORE any API call so lfm() can use it
@@ -779,11 +788,21 @@ async function initDashboard() {
     if (!userInfo.user) throw new Error('No user data returned');
     STATE.userInfo = userInfo.user;
 
-    if (csvText) STATE.collection = parseCSV(csvText);
+    // Load collection from Google Sheets URL if provided
+    const csvUrl = document.getElementById('input-csv-url').value.trim();
+    if (csvUrl) {
+      try {
+        const csvText = await fetchCSV(csvUrl);
+        STATE.collection = parseCSV(csvText);
+        sessionStorage.setItem('collection_csv_url', csvUrl);
+      } catch(csvErr) {
+        console.warn('Could not load collection CSV:', csvErr);
+        // Non-fatal — dashboard loads without collection
+      }
+    }
 
     // Save to sessionStorage for convenience
     sessionStorage.setItem('lfm_username', username);
-    if (csvText) sessionStorage.setItem('collection_csv', csvText);
 
     document.getElementById('setup-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
@@ -1572,7 +1591,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedCsv = sessionStorage.getItem('collection_csv');
   if (savedUser) {
     document.getElementById('input-username').value = savedUser;
-    if (savedCsv) document.getElementById('input-csv').value = savedCsv;
+    const savedCsvUrl = sessionStorage.getItem('collection_csv_url');
+    if (savedCsvUrl) document.getElementById('input-csv-url').value = savedCsvUrl;
   }
 });
 </script>
