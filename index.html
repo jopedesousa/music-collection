@@ -149,17 +149,28 @@ body {
 .shelf-wall {
   background: #f7f3ee;
   border-radius: 16px;
-  padding: 28px 28px 0;
+  padding: 60px 28px 0;   /* extra top so hover lift is visible */
   position: relative;
   border: 1px solid #e8e0d4;
   box-shadow: inset 0 2px 8px rgba(0,0,0,.04);
+  overflow: visible;       /* never clip children */
 }
+.shelf-scroll-wrap {
+  overflow-x: auto;
+  overflow-y: visible;     /* tooltip can escape upward */
+  scrollbar-width: thin;
+  scrollbar-color: #c4a882 #f0ebe3;
+  padding: 0 4px;
+}
+.shelf-scroll-wrap::-webkit-scrollbar { height: 4px; }
+.shelf-scroll-wrap::-webkit-scrollbar-track { background: #f0ebe3; border-radius: 2px; }
+.shelf-scroll-wrap::-webkit-scrollbar-thumb { background: #c4a882; border-radius: 2px; }
 .shelf-records {
-  display: flex; gap: 12px; align-items: flex-end;
-  padding-bottom: 0; min-height: 200px;
-  overflow-x: auto; scrollbar-width: none;
+  display: flex; gap: 14px; align-items: flex-end;
+  min-height: 160px;
+  width: max-content; min-width: 100%;
+  padding-bottom: 0;
 }
-.shelf-records::-webkit-scrollbar { display: none; }
 
 .shelf-plank {
   height: 18px;
@@ -214,19 +225,22 @@ body {
   background: rgba(0,0,0,.3); filter: blur(8px); border-radius: 50%;
   opacity: 0; transition: opacity .3s;
 }
-.record-tooltip {
-  position: absolute; bottom: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%);
+/* Tooltip is rendered in a fixed portal via JS, not inside the card */
+#record-tooltip {
+  position: fixed;
   background: rgba(20,20,18,.95); color: #fff;
-  border-radius: 8px; padding: 8px 12px;
-  font-size: 11px; white-space: nowrap;
-  pointer-events: none; opacity: 0;
-  transition: opacity .2s; z-index: 20;
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 11px;
+  pointer-events: none;
+  z-index: 99999;
   backdrop-filter: blur(8px);
-  box-shadow: 0 4px 16px rgba(0,0,0,.2);
-  max-width: 200px; white-space: normal; text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,.35);
+  max-width: 220px; white-space: normal; text-align: center;
+  transform: translateX(-50%) translateY(-100%);
+  transition: opacity .12s;
+  opacity: 0;
 }
-.record-card:hover .record-tooltip { opacity: 1; }
+#record-tooltip.visible { opacity: 1; }
 .record-tooltip-artist { font-size: 10px; color: rgba(255,255,255,.6); margin-bottom: 2px; }
 .record-tooltip-album { font-weight: 600; font-size: 12px; }
 .record-tooltip-plays { font-size: 10px; color: var(--accent2); margin-top: 3px; }
@@ -442,7 +456,26 @@ canvas { max-height: 220px !important; }
   border: 1px solid var(--border);
 }
 .gaps-card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.gaps-section-count {
+  display: inline-block; background: var(--bg3); color: var(--text3);
+  border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 600;
+  margin-left: 6px; vertical-align: middle;
+}
 .gaps-card-sub { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+
+/* ─── STATS PERIOD FILTER ─── */
+.stats-period-row {
+  display: flex; gap: 4px; margin-bottom: 24px;
+  background: var(--bg3); padding: 3px; border-radius: 10px;
+  width: fit-content; flex-wrap: wrap;
+}
+.period-btn {
+  padding: 7px 16px; font-size: 13px; font-weight: 500; color: var(--text3);
+  cursor: pointer; border: none; background: none; border-radius: 8px;
+  transition: all .15s; font-family: inherit; white-space: nowrap;
+}
+.period-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.period-btn:hover:not(.active) { color: var(--text2); }
 
 /* ─── LOADING OVERLAY ─── */
 .page-loading {
@@ -502,11 +535,12 @@ canvas { max-height: 220px !important; }
 </style>
 </head>
 <body>
+<div id="record-tooltip"></div>
 
 <!-- ─── SETUP SCREEN ─── -->
 <div id="setup-screen">
   <div class="setup-logo">
-    <div class="setup-wordmark">VINYL</div>
+    <div class="setup-wordmark">VINYL<span style="color:var(--accent2)">.</span></div>
     <div class="setup-tagline">Your music, beautifully tracked</div>
   </div>
   <div class="setup-card">
@@ -535,10 +569,10 @@ canvas { max-height: 220px !important; }
     <div class="top-logo" onclick="navigate('home')">VINYL<span>.</span></div>
     <div class="top-nav">
       <button class="nav-btn active" data-page="home" onclick="navigate('home')">Home</button>
+      <button class="nav-btn" data-page="thisweek" onclick="navigate('thisweek')">This Week</button>
       <button class="nav-btn" data-page="collection" onclick="navigate('collection')">Collection</button>
       <button class="nav-btn" data-page="stats" onclick="navigate('stats')">Stats</button>
       <button class="nav-btn" data-page="wrapped" onclick="navigate('wrapped')">Wrapped</button>
-      <button class="nav-btn" data-page="thisweek" onclick="navigate('thisweek')">This Week</button>
       <button class="nav-btn" data-page="gaps" onclick="navigate('gaps')">Gaps</button>
     </div>
     <div class="top-right">
@@ -567,7 +601,7 @@ canvas { max-height: 220px !important; }
       <div class="shelf-section">
         <div class="shelf-label">All-time top 10</div>
         <div class="shelf-wall">
-          <div class="shelf-records" id="shelf-alltime"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div>
+          <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-alltime"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
           <div class="shelf-plank"></div>
         </div>
       </div>
@@ -575,7 +609,7 @@ canvas { max-height: 220px !important; }
       <div class="shelf-section">
         <div class="shelf-label">Last 52 weeks</div>
         <div class="shelf-wall">
-          <div class="shelf-records" id="shelf-52w"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div>
+          <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-52w"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
           <div class="shelf-plank"></div>
         </div>
       </div>
@@ -583,7 +617,7 @@ canvas { max-height: 220px !important; }
       <div class="shelf-section">
         <div class="shelf-label">Last 5 years · excluding past 52 weeks</div>
         <div class="shelf-wall">
-          <div class="shelf-records" id="shelf-5y"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div>
+          <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-5y"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
           <div class="shelf-plank"></div>
         </div>
       </div>
@@ -612,8 +646,10 @@ canvas { max-height: 220px !important; }
         <select class="filter-select" id="filter-sort" onchange="filterCollection()">
           <option value="plays">Sort: Most played</option>
           <option value="rating">Sort: My rating</option>
+          <option value="artist_year">Sort: Artist then year</option>
           <option value="artist">Sort: Artist A–Z</option>
-          <option value="year">Sort: Year</option>
+          <option value="year">Sort: Year (newest)</option>
+          <option value="year_asc">Sort: Year (oldest)</option>
         </select>
       </div>
       <div class="collection-count" id="collection-count"></div>
@@ -626,18 +662,25 @@ canvas { max-height: 220px !important; }
         <div class="page-title">Stats</div>
         <div class="page-subtitle">Your listening history at a glance</div>
       </div>
+      <div class="stats-period-row">
+        <button class="period-btn active" data-period="overall" onclick="setStatsPeriod('overall')">All time</button>
+        <button class="period-btn" data-period="12month" onclick="setStatsPeriod('12month')">Last 365 days</button>
+        <button class="period-btn" data-period="3month" onclick="setStatsPeriod('3month')">Last 90 days</button>
+        <button class="period-btn" data-period="1month" onclick="setStatsPeriod('1month')">Last 30 days</button>
+        <button class="period-btn" data-period="7day" onclick="setStatsPeriod('7day')">Last 7 days</button>
+      </div>
       <div class="stats-grid" id="stats-cards"></div>
-      <div class="chart-card">
+      <div class="chart-card" id="yearly-chart-card">
         <div class="chart-header"><div class="chart-title">Scrobbles per year</div><div class="chart-meta" id="stats-years-range"></div></div>
         <canvas id="chart-yearly"></canvas>
       </div>
       <div class="charts-2col">
         <div class="chart-card" style="margin-bottom:0">
-          <div class="chart-header"><div class="chart-title">Top 20 artists</div><div class="chart-meta">all time</div></div>
+          <div class="chart-header"><div class="chart-title">Top artists</div><div class="chart-meta" id="top-artists-period-label">all time</div></div>
           <div class="top-list" id="top-artists-list"></div>
         </div>
         <div class="chart-card" style="margin-bottom:0">
-          <div class="chart-header"><div class="chart-title">Top 20 albums</div><div class="chart-meta">all time</div></div>
+          <div class="chart-header"><div class="chart-title">Top albums</div><div class="chart-meta" id="top-albums-period-label">all time</div></div>
           <div class="top-list" id="top-albums-list"></div>
         </div>
       </div>
@@ -670,6 +713,14 @@ canvas { max-height: 220px !important; }
         <div class="page-title">Gaps</div>
         <div class="page-subtitle">Albums you own but rarely play · Artists you love but don't own</div>
       </div>
+      <div class="collection-controls" style="margin-bottom:20px">
+        <select class="filter-select" id="gaps-filter-format" onchange="applyGapsFilter()">
+          <option value="">All formats</option>
+          <option value="CD">CD</option>
+          <option value="mp3">MP3</option>
+          <option value="Spotify">Spotify</option>
+        </select>
+      </div>
       <div id="gaps-content">
         <div class="page-loading"><div class="load-spinner"></div><div class="load-text">Analysing your collection…</div></div>
       </div>
@@ -680,10 +731,10 @@ canvas { max-height: 220px !important; }
   <!-- Mobile nav -->
   <div class="mobile-nav">
     <button class="mobile-nav-btn active" data-page="home" onclick="navigate('home')"><span class="mobile-nav-icon">🏠</span>Home</button>
+    <button class="mobile-nav-btn" data-page="thisweek" onclick="navigate('thisweek')"><span class="mobile-nav-icon">📅</span>Week</button>
     <button class="mobile-nav-btn" data-page="collection" onclick="navigate('collection')"><span class="mobile-nav-icon">📦</span>Collection</button>
     <button class="mobile-nav-btn" data-page="stats" onclick="navigate('stats')"><span class="mobile-nav-icon">📊</span>Stats</button>
     <button class="mobile-nav-btn" data-page="wrapped" onclick="navigate('wrapped')"><span class="mobile-nav-icon">🎁</span>Wrapped</button>
-    <button class="mobile-nav-btn" data-page="thisweek" onclick="navigate('thisweek')"><span class="mobile-nav-icon">📅</span>Week</button>
     <button class="mobile-nav-btn" data-page="gaps" onclick="navigate('gaps')"><span class="mobile-nav-icon">🕳️</span>Gaps</button>
   </div>
 </div>
@@ -919,25 +970,45 @@ function renderShelf(containerId, albums) {
   if (!albums.length) { el.innerHTML = '<div style="padding:20px;color:var(--text3);font-size:13px;">Not enough data yet</div>'; return; }
   el.innerHTML = albums.map((a, i) => {
     const artist = a.artist?.name || a.artist || '';
-    const name = a.name || '';
-    const plays = parseInt(a.playcount||0).toLocaleString();
-    const img = a.image?.find(im => im.size === 'large')?.['#text'] || '';
+    const name   = a.name || '';
+    const plays  = parseInt(a.playcount||0).toLocaleString();
+    const img    = a.image?.find(im => im.size === 'large')?.['#text'] || '';
+    const ttData = encodeURIComponent(JSON.stringify({ artist, name, plays }));
     const imgHtml = img
-      ? `<img class="record-cover" src="${img}" alt="${escHtml(name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      ? `<img class="record-cover" src="${img}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
       : '';
     const phHtml = `<div class="record-cover-placeholder" ${img ? 'style="display:none"' : ''}><div class="ph-artist">${escHtml(artist)}</div><div class="ph-album">${escHtml(name)}</div></div>`;
-    return `
-      <div class="record-card" onclick="openAlbumDetail('${escHtml(artist)}','${escHtml(name)}')">
+    return `<div class="record-card"
+        data-tt="${ttData}"
+        onmouseenter="showRecordTooltip(event,this)"
+        onmouseleave="hideRecordTooltip()"
+        onclick="openAlbumDetail('${escHtml(artist).replace(/'/g,"&#39;")}','${escHtml(name).replace(/'/g,"&#39;")}')"
+      >
         <div class="record-rank">${i+1}</div>
         ${imgHtml}${phHtml}
         <div class="record-cover-shadow"></div>
-        <div class="record-tooltip">
-          <div class="record-tooltip-artist">${escHtml(artist)}</div>
-          <div class="record-tooltip-album">${escHtml(name)}</div>
-          <div class="record-tooltip-plays">${plays} plays</div>
-        </div>
       </div>`;
   }).join('');
+}
+
+// Global floating tooltip
+function showRecordTooltip(e, card) {
+  const tt = document.getElementById('record-tooltip');
+  const d  = JSON.parse(decodeURIComponent(card.dataset.tt));
+  tt.innerHTML = `<div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:3px">${escHtml(d.artist)}</div>
+    <div style="font-weight:600;font-size:12px;line-height:1.3">${escHtml(d.name)}</div>
+    <div style="font-size:10px;color:#c8a96e;margin-top:4px">${d.plays} plays</div>`;
+  positionRecordTooltip(e, card);
+  tt.classList.add('visible');
+}
+function positionRecordTooltip(e, card) {
+  const tt   = document.getElementById('record-tooltip');
+  const rect = card.getBoundingClientRect();
+  tt.style.left = (rect.left + rect.width/2) + 'px';
+  tt.style.top  = (rect.top - 12) + 'px';
+}
+function hideRecordTooltip() {
+  document.getElementById('record-tooltip').classList.remove('visible');
 }
 
 /* ══════════════════════════════════════════════
@@ -1006,24 +1077,55 @@ function filterCollection() {
 
   if (sort === 'plays') items = items.sort((a,b) => b.plays - a.plays);
   else if (sort === 'rating') items = items.sort((a,b) => (parseFloat(b.my_rating||0)) - (parseFloat(a.my_rating||0)));
+  else if (sort === 'artist_year') items = items.sort((a,b) => {
+    const ac = (a.artist||'').localeCompare(b.artist||'');
+    return ac !== 0 ? ac : (parseInt(a.year)||0) - (parseInt(b.year)||0);
+  });
   else if (sort === 'artist') items = items.sort((a,b) => (a.artist||'').localeCompare(b.artist||''));
   else if (sort === 'year') items = items.sort((a,b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
+  else if (sort === 'year_asc') items = items.sort((a,b) => (parseInt(a.year)||0) - (parseInt(b.year)||0));
 
   document.getElementById('collection-count').textContent = `${items.length} album${items.length !== 1 ? 's' : ''}`;
-  document.getElementById('collection-grid').innerHTML = items.map(a => albumCardHtml(a)).join('');
+  renderCollectionWithCovers(items);
 }
 
-function albumCardHtml(a) {
-  const fmtClass = `fmt-${(a.format||'mp3').toLowerCase()}`;
-  const fmtLabel = a.format || '';
+/* ─── COVER ART CACHE ─── */
+const COVER_CACHE = {};
+
+async function fetchCoverArt(artist, album) {
+  const key = `${artist}::${album}`.toLowerCase();
+  if (COVER_CACHE[key] !== undefined) return COVER_CACHE[key];
+  COVER_CACHE[key] = null; // mark as fetching
+  try {
+    // 1. Try Last.fm album info first (fastest)
+    const lfmData = await lfm('album.getinfo', { artist, album });
+    const lfmImg = lfmData?.album?.image?.find(i => i.size === 'large')?.['#text'];
+    if (lfmImg && lfmImg.length > 10) { COVER_CACHE[key] = lfmImg; return lfmImg; }
+    // 2. Fall back to MusicBrainz Cover Art Archive
+    const mbRes = await fetch(`https://musicbrainz.org/ws/2/release/?query=artist:"${encodeURIComponent(artist)}" AND release:"${encodeURIComponent(album)}"&limit=1&fmt=json`);
+    const mbData = await mbRes.json();
+    const mbid = mbData?.releases?.[0]?.id;
+    if (mbid) {
+      const caRes = await fetch(`https://coverartarchive.org/release/${mbid}/front-250`, { redirect: 'follow' });
+      if (caRes.ok) { COVER_CACHE[key] = caRes.url; return caRes.url; }
+    }
+  } catch(e) { /* ignore */ }
+  COVER_CACHE[key] = null;
+  return null;
+}
+
+function albumCardHtml(a, coverUrl) {
+  const fmtClass   = `fmt-${(a.format||'mp3').toLowerCase().replace(/[^a-z]/g,'')}`;
+  const fmtLabel   = a.format || '';
   const playsLabel = a.plays > 0 ? `${a.plays.toLocaleString()} plays` : '';
-  const img = a.coverUrl || '';
-  const artHtml = img
-    ? `<img class="album-art" src="${img}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-    : '';
-  const ph = `<div class="album-art-placeholder" ${img ? 'style="display:none"' : ''}><span>${escHtml(a.artist||'')}</span><strong>${escHtml(a.album||'')}</strong></div>`;
+  const img        = coverUrl || a.coverUrl || '';
+  const uid        = `ac-${encodeURIComponent((a.artist||'')+'::'+( a.album||''))}`.replace(/[^a-zA-Z0-9\-_]/g,'_').slice(0,60);
+  const artHtml    = img
+    ? `<img class="album-art" id="${uid}-img" src="${img}" alt="" loading="lazy" onerror="this.style.display='none';document.getElementById('${uid}-ph').style.display='flex'">`
+    : ``;
+  const ph = `<div class="album-art-placeholder" id="${uid}-ph" ${img ? 'style="display:none"' : ''}><span>${escHtml(a.artist||'')}</span><strong>${escHtml(a.album||'')}</strong></div>`;
   return `
-    <div class="album-card" onclick="openAlbumDetail('${escHtml(a.artist||'')}','${escHtml(a.album||'')}')">
+    <div class="album-card" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
       ${artHtml}${ph}
       <div class="album-title">${escHtml(a.album||'')}</div>
       <div class="album-artist">${escHtml(a.artist||'')}</div>
@@ -1035,40 +1137,94 @@ function albumCardHtml(a) {
     </div>`;
 }
 
+async function renderCollectionWithCovers(items) {
+  // Render immediately with placeholders, then load covers progressively
+  const grid = document.getElementById('collection-grid');
+  // First pass: render all cards (covers from cache if available)
+  grid.innerHTML = items.map(a => {
+    const key = `${a.artist}::${a.album}`.toLowerCase();
+    const cached = COVER_CACHE[key];
+    return albumCardHtml(a, typeof cached === 'string' ? cached : '');
+  }).join('');
+  // Second pass: fetch missing covers in batches of 5
+  const missing = items.filter(a => COVER_CACHE[`${a.artist}::${a.album}`.toLowerCase()] === undefined);
+  const BATCH = 5;
+  for (let i = 0; i < missing.length; i += BATCH) {
+    const batch = missing.slice(i, i + BATCH);
+    await Promise.all(batch.map(async a => {
+      const url = await fetchCoverArt(a.artist, a.album);
+      if (url) {
+        const key = `${a.artist}::${a.album}`.toLowerCase();
+        const uid = `ac-${encodeURIComponent(a.artist+'::'+a.album)}`.replace(/[^a-zA-Z0-9\-_]/g,'_').slice(0,60);
+        const imgEl = document.getElementById(uid+'-img');
+        const phEl  = document.getElementById(uid+'-ph');
+        if (!imgEl && phEl) {
+          // Inject image
+          const img = document.createElement('img');
+          img.className = 'album-art'; img.src = url; img.alt = '';
+          img.id = uid+'-img';
+          img.onerror = () => { img.style.display='none'; if(phEl) phEl.style.display='flex'; };
+          phEl.parentNode.insertBefore(img, phEl);
+          phEl.style.display = 'none';
+        }
+      }
+    }));
+  }
+}
+
 /* ══════════════════════════════════════════════
    STATS PAGE
    ══════════════════════════════════════════════ */
+let STATS_PERIOD = 'overall';
+const PERIOD_LABELS = {
+  'overall': 'all time', '12month': 'last 365 days',
+  '3month': 'last 90 days', '1month': 'last 30 days', '7day': 'last 7 days'
+};
+
+async function setStatsPeriod(period) {
+  STATS_PERIOD = period;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === period));
+  // For non-overall periods, just reload top artists/albums; keep yearly chart as-is
+  await loadStatsForPeriod(period);
+}
+
 async function loadStats() {
   STATE.statsLoaded = true;
   try {
-    const [topArtists, topAlbums, weeklyChart] = await Promise.all([
-      lfm('user.getTopArtists', { period: 'overall', limit: 20 }),
-      lfm('user.getTopAlbums', { period: 'overall', limit: 20 }),
-      lfm('user.getWeeklyChartList'),
+    // Always load yearly scrobbles (overall)
+    const weeklyChart = await lfm('user.getWeeklyChartList');
+    const weeksByYear = {};
+    for (const ch of (weeklyChart.weeklychartlist?.chart || [])) {
+      const yr = new Date(parseInt(ch.from)*1000).getFullYear();
+      if (!weeksByYear[yr]) weeksByYear[yr] = [];
+      weeksByYear[yr].push({ from: ch.from, to: ch.to });
+    }
+    STATE.weeksByYear = weeksByYear;
+    await buildYearlyScrobbles(weeksByYear);
+    await loadStatsForPeriod('overall');
+  } catch(e) {
+    console.error('Stats error:', e);
+    document.getElementById('stats-cards').innerHTML = '<div style="padding:20px;color:var(--red)">Error loading stats: ' + e.message + '</div>';
+  }
+}
+
+async function loadStatsForPeriod(period) {
+  // Show loading in lists
+  document.getElementById('top-artists-list').innerHTML = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
+  document.getElementById('top-albums-list').innerHTML  = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
+  try {
+    const [topArtists, topAlbums] = await Promise.all([
+      lfm('user.getTopArtists', { period, limit: 20 }),
+      lfm('user.getTopAlbums',  { period, limit: 20 }),
     ]);
     STATE.topArtists = topArtists.topartists?.artist || [];
     STATE.topAlbumsStats = topAlbums.topalbums?.album || [];
-
-    // Build yearly scrobbles from weekly chart list
-    const charts = weeklyChart.weeklychartlist?.chart || [];
-    const yearMap = {};
-    // Group chart weeks by year
-    const weeksByYear = {};
-    for (const c of charts) {
-      const yr = new Date(parseInt(c.from)*1000).getFullYear();
-      if (!weeksByYear[yr]) weeksByYear[yr] = [];
-      weeksByYear[yr].push({ from: c.from, to: c.to });
-    }
-    STATE.weeksByYear = weeksByYear;
-
-    // Fetch play counts per year (sample from weekly charts - use top year charts)
-    // We'll use user.getRecentTracks pagination to count per year, but that's slow.
-    // Instead estimate from weeklyalbumshart sample
-    await buildYearlyScrobbles(weeksByYear);
-
-    renderStats();
+    const label = PERIOD_LABELS[period] || period;
+    document.getElementById('top-artists-period-label').textContent = label;
+    document.getElementById('top-albums-period-label').textContent  = label;
+    renderStats(period);
   } catch(e) {
-    console.error('Stats error:', e);
+    console.error('Stats period error:', e);
   }
 }
 
@@ -1090,7 +1246,7 @@ async function buildYearlyScrobbles(weeksByYear) {
   await Promise.all(promises);
 }
 
-function renderStats() {
+function renderStats(period = 'overall') {
   const u = STATE.userInfo;
   const years = Object.keys(STATE.yearlyScrobbles).map(Number).sort();
   const totalPlays = parseInt(u.playcount||0);
@@ -1098,35 +1254,39 @@ function renderStats() {
   const minYear = years.length ? Math.min(...years) : maxYear;
   const thisYearPlays = STATE.yearlyScrobbles[maxYear] || 0;
   const avgYearly = years.length ? Math.round(Object.values(STATE.yearlyScrobbles).reduce((a,b)=>a+b,0)/years.length) : 0;
-  const topArtist = STATE.topArtists[0];
+  const topArtistName = STATE.topArtists[0]?.name || '—';
 
-  document.getElementById('stats-cards').innerHTML = `
-    <div class="stat-card">
-      <div class="stat-card-val">${totalPlays.toLocaleString()}</div>
-      <div class="stat-card-label">Total scrobbles</div>
-      <div class="stat-card-sub">Since ${minYear}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-card-val">${thisYearPlays.toLocaleString()}</div>
-      <div class="stat-card-label">This year</div>
-      <div class="stat-card-sub">vs avg ${avgYearly.toLocaleString()}/yr</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-card-val">${parseInt(u.artist_count||0).toLocaleString()}</div>
-      <div class="stat-card-label">Artists scrobbled</div>
-      <div class="stat-card-sub">All time</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-card-val">${parseInt(u.track_count||0).toLocaleString()}</div>
-      <div class="stat-card-label">Tracks scrobbled</div>
-      <div class="stat-card-sub">All time</div>
-    </div>`;
+  // Only show overall stats cards when period is overall
+  if (period === 'overall') {
+    document.getElementById('stats-cards').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-card-val">${totalPlays.toLocaleString()}</div>
+        <div class="stat-card-label">Total scrobbles</div>
+        <div class="stat-card-sub">Since ${minYear}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${thisYearPlays.toLocaleString()}</div>
+        <div class="stat-card-label">This year</div>
+        <div class="stat-card-sub">vs avg ${avgYearly.toLocaleString()}/yr</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${parseInt(u.artist_count||0).toLocaleString()}</div>
+        <div class="stat-card-label">Artists scrobbled</div>
+        <div class="stat-card-sub">All time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${parseInt(u.track_count||0).toLocaleString()}</div>
+        <div class="stat-card-label">Tracks scrobbled</div>
+        <div class="stat-card-sub">All time</div>
+      </div>`;
+    document.getElementById('yearly-chart-card').style.display = 'block';
+    document.getElementById('stats-years-range').textContent = `${minYear}–${maxYear}`;
 
-  document.getElementById('stats-years-range').textContent = `${minYear}–${maxYear}`;
-
-  // Yearly chart
-  const ctx = document.getElementById('chart-yearly').getContext('2d');
-  new Chart(ctx, {
+    // Only init chart once
+    if (!STATE._yearlyChartInit) {
+      STATE._yearlyChartInit = true;
+      const ctx = document.getElementById('chart-yearly').getContext('2d');
+      new Chart(ctx, {
     type: 'bar',
     data: {
       labels: years,
@@ -1143,7 +1303,34 @@ function renderStats() {
         y: { grid: { color: '#f0f0ec' }, ticks: { font: { size: 11 }, color: '#a8a8a0' } }
       }
     }
-  });
+      });
+    }
+  } else {
+    // For filtered periods, hide yearly chart and show period summary
+    document.getElementById('yearly-chart-card').style.display = 'none';
+    const periodTotal = STATE.topArtists.reduce((s,a) => s + parseInt(a.playcount||0), 0);
+    document.getElementById('stats-cards').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-card-val">${STATE.topArtists.length}</div>
+        <div class="stat-card-label">Artists</div>
+        <div class="stat-card-sub">${PERIOD_LABELS[period]}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${STATE.topAlbumsStats.length}</div>
+        <div class="stat-card-label">Albums</div>
+        <div class="stat-card-sub">${PERIOD_LABELS[period]}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${escHtml(STATE.topArtists[0]?.name||'—')}</div>
+        <div class="stat-card-label">Top artist</div>
+        <div class="stat-card-sub">${parseInt(STATE.topArtists[0]?.playcount||0).toLocaleString()} plays</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${escHtml(STATE.topAlbumsStats[0]?.name||'—')}</div>
+        <div class="stat-card-label">Top album</div>
+        <div class="stat-card-sub">${parseInt(STATE.topAlbumsStats[0]?.playcount||0).toLocaleString()} plays</div>
+      </div>`;
+  }
 
   // Top artists
   const maxPlays = parseInt(STATE.topArtists[0]?.playcount || 1);
@@ -1229,49 +1416,73 @@ async function loadWrappedYear(year) {
 
   try {
     const from = Math.floor(new Date(year, 0, 1).getTime()/1000);
-    const to = Math.floor(new Date(year, 11, 31, 23, 59, 59).getTime()/1000);
+    const to   = Math.floor(new Date(year, 11, 31, 23, 59, 59).getTime()/1000);
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    const [albumsData, artistsData, recentFirst, recentLast] = await Promise.all([
-      lfm('user.getTopAlbums', { period: 'overall', limit: 10, from, to }),
-      lfm('user.getTopArtists', { period: 'overall', limit: 10, from, to }),
+    // 1. Monthly scrobble counts (12 parallel calls)
+    const monthCounts = await Promise.all(
+      Array.from({length:12}, (_, m) => {
+        const mFrom = Math.floor(new Date(year, m, 1).getTime()/1000);
+        const mTo   = Math.floor(new Date(year, m+1, 0, 23, 59, 59).getTime()/1000);
+        return lfm('user.getRecentTracks', { from: mFrom, to: mTo, limit: 1 })
+          .then(d => parseInt(d.recenttracks?.['@attr']?.total || 0)).catch(() => 0);
+      })
+    );
+    const totalYear = monthCounts.reduce((a,b) => a+b, 0);
+    const peakMonth = monthCounts.indexOf(Math.max(...monthCounts));
+
+    // 2. Use weekly album/artist charts to build top lists for the year
+    //    Get all weekly chart boundaries that overlap this year
+    const chartList = await lfm('user.getWeeklyChartList');
+    const yearCharts = (chartList.weeklychartlist?.chart || []).filter(c => {
+      const wYear = new Date(parseInt(c.from)*1000).getFullYear();
+      return wYear === year;
+    });
+
+    // Aggregate weekly album charts
+    const albumTotals = {};
+    const artistTotals = {};
+    // Fetch up to 20 weekly charts in parallel (enough to cover a year)
+    const weekFetches = yearCharts.slice(0, 52).map(wc =>
+      Promise.all([
+        lfm('user.getWeeklyAlbumChart', { from: wc.from, to: wc.to }).catch(()=>null),
+        lfm('user.getWeeklyArtistChart', { from: wc.from, to: wc.to }).catch(()=>null),
+      ])
+    );
+    const weekResults = await Promise.all(weekFetches);
+    for (const [albumRes, artistRes] of weekResults) {
+      for (const a of (albumRes?.weeklyalbumchart?.album || [])) {
+        const key = `${(a.artist?.['#text']||'').toLowerCase()}::${(a.name||'').toLowerCase()}`;
+        albumTotals[key] = albumTotals[key] || { name: a.name, artist: a.artist?.['#text']||'', plays: 0, image: a.image||[] };
+        albumTotals[key].plays += parseInt(a.playcount||0);
+      }
+      for (const a of (artistRes?.weeklyartistchart?.artist || [])) {
+        const key = (a.name||'').toLowerCase();
+        artistTotals[key] = artistTotals[key] || { name: a.name, plays: 0, image: a.image||[] };
+        artistTotals[key].plays += parseInt(a.playcount||0);
+      }
+    }
+    const albums  = Object.values(albumTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
+    const artists = Object.values(artistTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
+
+    // 3. First & last scrobble of year
+    const [recentFirst, recentLast] = await Promise.all([
       lfm('user.getRecentTracks', { from, to, limit: 1, page: 1 }),
       lfm('user.getRecentTracks', { from, to, limit: 1 }),
     ]);
-
-    // Fetch per-month counts (12 API calls - batch them)
-    const monthCounts = await Promise.all(
-      Array.from({length:12},(_,m) => {
-        const mFrom = Math.floor(new Date(year, m, 1).getTime()/1000);
-        const mTo = Math.floor(new Date(year, m+1, 0, 23, 59, 59).getTime()/1000);
-        return lfm('user.getRecentTracks', { from: mFrom, to: mTo, limit: 1 })
-          .then(d => parseInt(d.recenttracks?.['@attr']?.total||0)).catch(()=>0);
-      })
-    );
-
-    const totalYear = monthCounts.reduce((a,b)=>a+b,0);
-    const peakMonth = monthCounts.indexOf(Math.max(...monthCounts));
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-    // New artists this year (rough: top artists overall vs this year's top artists)
-    // We'll just show artists, noting this is complex to compute precisely
-
-    const albums = albumsData?.topalbums?.album || [];
-    const artists = artistsData?.topartists?.artist || [];
-
-    // Extract dominant colour from top album cover (use a palette based on year index)
-    const paletteIdx = year % YEAR_PALETTES.length;
-    const palette = YEAR_PALETTES[paletteIdx];
-
     const firstTrack = recentFirst.recenttracks?.track?.[0];
     const lastTracks = recentLast.recenttracks?.track || [];
-    const lastTrack = lastTracks.find(t => !t['@attr']?.nowplaying);
+    const lastTrack  = Array.isArray(lastTracks) ? lastTracks.find(t => !t['@attr']?.nowplaying) : (lastTracks['@attr']?.nowplaying ? null : lastTracks);
+
+    const paletteIdx = year % YEAR_PALETTES.length;
+    const palette    = YEAR_PALETTES[paletteIdx];
 
     const data = { albums, artists, monthCounts, totalYear, peakMonth, monthNames, palette, firstTrack, lastTrack };
     STATE.wrappedCache[year] = data;
     renderWrappedYear(year, data);
   } catch(e) {
     console.error('Wrapped error:', e);
-    document.getElementById('wrapped-panels').innerHTML = '<div style="padding:40px;color:var(--text3)">Could not load data for ' + year + '</div>';
+    document.getElementById('wrapped-panels').innerHTML = '<div style="padding:40px;color:var(--text3)">Could not load data for ' + year + ': ' + e.message + '</div>';
   }
 }
 
@@ -1312,13 +1523,13 @@ function renderWrappedYear(year, d) {
         <div class="wrapped-card-title">Top albums</div>
         <div class="top-list">
           ${albums.slice(0,10).map((a,i) => {
-            const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
-            const artist = a.artist?.name||'';
+            const img = a.image?.find?.(im=>im.size==='medium')?.['#text'] || a.image?.[1]?.['#text'] || '';
+            const artist = a.artist?.name || a.artist || '';
             return `<div class="top-row">
               <div class="top-rank">${i+1}</div>
-              ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">💿</div>`}
-              <div class="top-info"><div class="top-name">${escHtml(a.name)}</div><div class="top-sub">${escHtml(artist)}</div></div>
-              <div class="top-plays">${parseInt(a.playcount||0).toLocaleString()}<div class="top-plays-sub">plays</div></div>
+              ${img ? `<img class="top-art" src="${escHtml(img)}" alt="">` : `<div class="top-art-placeholder">💿</div>`}
+              <div class="top-info"><div class="top-name">${escHtml(a.name||'')}</div><div class="top-sub">${escHtml(artist)}</div></div>
+              <div class="top-plays">${(a.plays||parseInt(a.playcount||0)).toLocaleString()}<div class="top-plays-sub">plays</div></div>
             </div>`;
           }).join('')}
         </div>
@@ -1327,12 +1538,12 @@ function renderWrappedYear(year, d) {
         <div class="wrapped-card-title">Top artists</div>
         <div class="top-list">
           ${artists.slice(0,10).map((a,i) => {
-            const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
+            const img = a.image?.find?.(im=>im.size==='medium')?.['#text'] || a.image?.[1]?.['#text'] || '';
             return `<div class="top-row">
               <div class="top-rank">${i+1}</div>
-              ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
-              <div class="top-info"><div class="top-name">${escHtml(a.name)}</div></div>
-              <div class="top-plays">${parseInt(a.playcount||0).toLocaleString()}<div class="top-plays-sub">plays</div></div>
+              ${img ? `<img class="top-art" src="${escHtml(img)}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
+              <div class="top-info"><div class="top-name">${escHtml(a.name||'')}</div></div>
+              <div class="top-plays">${(a.plays||parseInt(a.playcount||0)).toLocaleString()}<div class="top-plays-sub">plays</div></div>
             </div>`;
           }).join('')}
         </div>
@@ -1489,6 +1700,74 @@ async function loadThisWeek() {
 /* ══════════════════════════════════════════════
    GAPS PAGE
    ══════════════════════════════════════════════ */
+function buildGapsHTML(unplayed, rarelyPlayed, notOwned) {
+  function albumRow(a) {
+    return `<div class="top-row gaps-filterable" data-format="${escHtml(a.format||'')}">
+      <div class="top-art-placeholder">💿</div>
+      <div class="top-info">
+        <div class="top-name">${escHtml(a.album||'')}</div>
+        <div class="top-sub">${escHtml(a.artist||'')} · ${a.year||''}
+          <span class="format-badge fmt-${(a.format||'').toLowerCase()}" style="font-size:9px;padding:1px 5px;margin-left:4px">${escHtml(a.format||'')}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+  function rareRow(a) {
+    return `<div class="top-row gaps-filterable" data-format="${escHtml(a.format||'')}">
+      <div class="top-art-placeholder">💿</div>
+      <div class="top-info">
+        <div class="top-name">${escHtml(a.album||'')}</div>
+        <div class="top-sub">${escHtml(a.artist||'')}</div>
+      </div>
+      <div class="top-plays">${a.plays}<div class="top-plays-sub">plays</div></div>
+    </div>`;
+  }
+  return `
+    <div class="gaps-grid">
+      <div class="gaps-card">
+        <div class="gaps-card-title">Owned but never played <span class="gaps-section-count">${unplayed.length}</span></div>
+        <div class="gaps-card-sub">Albums in your collection with 0 Last.fm scrobbles</div>
+        <div class="top-list">${unplayed.slice(0,30).map(albumRow).join('')}</div>
+      </div>
+      <div class="gaps-card">
+        <div class="gaps-card-title">Rarely played <span class="gaps-section-count">${rarelyPlayed.length}</span></div>
+        <div class="gaps-card-sub">Albums you own with very few plays</div>
+        <div class="top-list">${rarelyPlayed.slice(0,30).map(rareRow).join('')}</div>
+      </div>
+      <div class="gaps-card" style="grid-column:1/-1">
+        <div class="gaps-card-title">Artists you love but don't own</div>
+        <div class="gaps-card-sub">Your most-scrobbled artists with nothing in your collection</div>
+        <div class="top-list">
+          ${notOwned.slice(0,20).map((a,i) => {
+            const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
+            return `<div class="top-row">
+              <div class="top-rank">${i+1}</div>
+              ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
+              <div class="top-info"><div class="top-name">${escHtml(a.name)}</div></div>
+              <div class="top-plays">${parseInt(a.playcount||0).toLocaleString()}<div class="top-plays-sub">plays</div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function filterGaps() {
+  const fmt = (document.getElementById('gaps-filter-format')?.value || '').toLowerCase();
+  const allSections = document.querySelectorAll('.gaps-filterable');
+  allSections.forEach(row => {
+    const rowFmt = (row.dataset.format||'').toLowerCase();
+    row.style.display = (!fmt || rowFmt === fmt) ? '' : 'none';
+  });
+  // Update counts
+  document.querySelectorAll('.gaps-section-count').forEach(el => {
+    const list = el.closest('.gaps-card')?.querySelector('.top-list');
+    if (!list) return;
+    const visible = list.querySelectorAll('.gaps-filterable:not([style*="display: none"])').length;
+    el.textContent = visible;
+  });
+}
+
 async function loadGaps() {
   STATE.gapsLoaded = true;
   try {
@@ -1517,58 +1796,8 @@ async function loadGaps() {
     const ownedArtists = new Set(collection.map(a => (a.artist||'').toLowerCase()));
     const notOwned = STATE.topArtists.filter(a => !ownedArtists.has((a.name||'').toLowerCase()));
 
-    document.getElementById('gaps-content').innerHTML = `
-      <div class="gaps-grid">
-        <div class="gaps-card">
-          <div class="gaps-card-title">Owned but never played</div>
-          <div class="gaps-card-sub">${unplayed.length} albums in your collection with 0 Last.fm scrobbles</div>
-          ${collection.length === 0 ? '<div style="color:var(--text3);font-size:13px">Add your collection CSV to see this</div>' : ''}
-          <div class="top-list">
-            ${unplayed.slice(0,15).map(a => `
-              <div class="top-row">
-                <div class="top-art-placeholder">💿</div>
-                <div class="top-info">
-                  <div class="top-name">${escHtml(a.album||'')}</div>
-                  <div class="top-sub">${escHtml(a.artist||'')} · ${a.year||''} · <span class="format-badge fmt-${(a.format||'').toLowerCase()}" style="font-size:9px;padding:1px 5px">${a.format||''}</span></div>
-                </div>
-              </div>`).join('')}
-          </div>
-        </div>
-
-        <div class="gaps-card">
-          <div class="gaps-card-title">Rarely played</div>
-          <div class="gaps-card-sub">Albums you own with very few plays</div>
-          ${collection.length === 0 ? '<div style="color:var(--text3);font-size:13px">Add your collection CSV to see this</div>' : ''}
-          <div class="top-list">
-            ${rarelyPlayed.slice(0,15).map(a => `
-              <div class="top-row">
-                <div class="top-art-placeholder">💿</div>
-                <div class="top-info">
-                  <div class="top-name">${escHtml(a.album||'')}</div>
-                  <div class="top-sub">${escHtml(a.artist||'')}</div>
-                </div>
-                <div class="top-plays">${a.plays}<div class="top-plays-sub">plays</div></div>
-              </div>`).join('')}
-          </div>
-        </div>
-
-        <div class="gaps-card" style="grid-column:1/-1">
-          <div class="gaps-card-title">Artists you love but don't own</div>
-          <div class="gaps-card-sub">Your most-scrobbled artists with nothing in your collection</div>
-          <div class="top-list">
-            ${notOwned.slice(0,20).map((a,i) => {
-              const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
-              return `<div class="top-row">
-                <div class="top-rank">${i+1}</div>
-                ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
-                <div class="top-info"><div class="top-name">${escHtml(a.name)}</div></div>
-                <div class="top-plays">${parseInt(a.playcount||0).toLocaleString()}<div class="top-plays-sub">plays</div></div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
-      </div>
-    `;
+        document.getElementById('gaps-content').innerHTML = buildGapsHTML(unplayed, rarelyPlayed, notOwned);
+    filterGaps();
   } catch(e) {
     console.error('Gaps error:', e);
     document.getElementById('gaps-content').innerHTML = '<div style="padding:40px;color:var(--text3)">Could not load gaps data</div>';
