@@ -575,7 +575,9 @@ canvas { max-height: 220px !important; }
       <button class="nav-btn" data-page="wrapped" onclick="navigate('wrapped')">Wrapped</button>
       <button class="nav-btn" data-page="gaps" onclick="navigate('gaps')">Gaps</button>
     </div>
-    <div class="top-right">
+    <div class="top-right" style="display:flex;align-items:center;gap:8px">
+      <button class="nav-btn" onclick="refreshCurrentPage()" title="Refresh this page's data" style="font-size:11px;padding:5px 10px">↻ Refresh</button>
+      <button class="nav-btn" onclick="clearAllCache()" title="Clear all cached data" style="font-size:11px;padding:5px 10px;color:var(--text4)">Clear cache</button>
       <div class="user-chip">
         <div class="user-avatar" id="user-avatar-initials">?</div>
         <span id="user-display-name">—</span>
@@ -767,6 +769,96 @@ let STATE = {
   gapsLoaded: false,
 };
 
+/* ══════════════════════════════════════════════
+   CACHE SYSTEM (localStorage, mirrors Strava pattern)
+   ══════════════════════════════════════════════
+   Keys:
+     vinyl_user          → { username, userInfo, lastUpdated }
+     vinyl_yearly        → { [year]: count, lastUpdated, lastYear }
+     vinyl_top_overall   → { albums:[], artists:[], lastUpdated }
+     vinyl_top_12month   → { albums:[], artists:[], lastUpdated }
+     vinyl_top_3month    → { albums:[], artists:[], lastUpdated }
+     vinyl_top_1month    → { albums:[], artists:[], lastUpdated }
+     vinyl_top_7day      → { albums:[], artists:[], lastUpdated }
+     vinyl_wrapped_YEAR  → { ...wrappedData, lastUpdated }
+   ══════════════════════════════════════════════ */
+
+const CACHE_VERSION = 'v2';
+function cacheKey(k) { return `vinyl_${k}_${CACHE_VERSION}`; }
+
+function cLoad(k) {
+  try {
+    const raw = localStorage.getItem(cacheKey(k));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+function cSave(k, data) {
+  try { localStorage.setItem(cacheKey(k), JSON.stringify(data)); } catch(e) {}
+}
+function cClear() {
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('vinyl_'));
+  keys.forEach(k => localStorage.removeItem(k));
+}
+
+// How stale is this cache? Returns age in minutes.
+function cAge(data) {
+  if (!data?.lastUpdated) return Infinity;
+  return (Date.now() - data.lastUpdated) / 60000;
+}
+
+// Short-lived periods refresh more often; all-time/yearly refresh once per day
+const STALE_MINUTES = {
+  '7day': 60,       // 1 hour
+  '1month': 360,    // 6 hours
+  '3month': 720,    // 12 hours
+  '12month': 1440,  // 1 day
+  'overall': 1440,  // 1 day
+  'yearly': 1440,   // 1 day
+  'wrapped': 10080, // 1 week (past years never change)
+  'user': 60,
+};
+
+function isStale(key, period = 'overall') {
+  const data = cLoad(key);
+  return !data || cAge(data) > (STALE_MINUTES[period] ?? 1440);
+}
+
+/* ─── SYNC STATUS BAR ─── */
+function showSyncBar(msg, pct = null) {
+  let bar = document.getElementById('sync-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'sync-bar';
+    bar.style.cssText = `position:fixed;bottom:0;left:0;right:0;background:rgba(26,26,24,.95);
+      color:#fff;font-size:12px;padding:10px 20px;display:flex;align-items:center;gap:12px;
+      z-index:99998;backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,.1)`;
+    bar.innerHTML = `<div id="sync-spinner" style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);
+      border-top-color:#c8a96e;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0"></div>
+      <span id="sync-msg"></span>
+      <div style="flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin-left:8px">
+        <div id="sync-prog" style="height:100%;background:#c8a96e;border-radius:2px;transition:width .4s;width:0%"></div>
+      </div>`;
+    document.body.appendChild(bar);
+  }
+  document.getElementById('sync-msg').textContent = msg;
+  if (pct !== null) document.getElementById('sync-prog').style.width = pct + '%';
+  bar.style.display = 'flex';
+}
+function hideSyncBar(finalMsg) {
+  const bar = document.getElementById('sync-bar');
+  if (!bar) return;
+  if (finalMsg) {
+    document.getElementById('sync-msg').textContent = finalMsg;
+    document.getElementById('sync-spinner').style.borderTopColor = '#4a7c59';
+    document.getElementById('sync-prog').style.width = '100%';
+    setTimeout(() => { bar.style.display = 'none'; }, 2500);
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+
+
 /* ─── API HELPER ─── */
 async function lfm(method, params = {}) {
   const url = new URL(BASE);
@@ -894,6 +986,48 @@ function navigate(page) {
   if (page === 'gaps' && !STATE.gapsLoaded) loadGaps();
 }
 
+function refreshCurrentPage() {
+  const p = STATE.currentPage;
+  // Force re-fetch by resetting loaded flags and clearing page-specific cache
+  if (p === 'home') {
+    cSave('home_albums', null);
+    loadHomeData();
+  } else if (p === 'stats') {
+    STATE.statsLoaded = false;
+    STATE._yearlyChartInit = false;
+    const chart = Chart.getChart('chart-yearly');
+    if (chart) chart.destroy();
+    loadStats();
+  } else if (p === 'wrapped') {
+    // Only clear current year cache (past years are permanent)
+    const thisYear = new Date().getFullYear();
+    cSave(`wrapped_${thisYear}`, null);
+    delete STATE.wrappedCache[thisYear];
+    loadWrappedYear(thisYear);
+  } else if (p === 'thisweek') {
+    STATE.weekLoaded = false;
+    loadThisWeek();
+  } else if (p === 'gaps') {
+    STATE.gapsLoaded = false;
+    loadGaps();
+  }
+}
+
+function clearAllCache() {
+  if (!confirm('Clear all cached Last.fm data?\n\nThe dashboard will re-fetch everything from scratch next time you open each page.')) return;
+  cClear();
+  STATE.statsLoaded = false;
+  STATE.wrappedLoaded = false;
+  STATE.weekLoaded = false;
+  STATE.gapsLoaded = false;
+  STATE.wrappedCache = {};
+  STATE.yearlyScrobbles = {};
+  STATE._yearlyChartInit = false;
+  const chart = Chart.getChart('chart-yearly');
+  if (chart) chart.destroy();
+  alert('Cache cleared. Refresh the page to reload everything.');
+}
+
 /* ══════════════════════════════════════════════
    HOME PAGE
    ══════════════════════════════════════════════ */
@@ -907,23 +1041,37 @@ async function loadHomeData() {
   document.getElementById('stat-collection').textContent = STATE.collection.length > 0 ? STATE.collection.length.toLocaleString() : '—';
 
   try {
-    const [allTime, w52] = await Promise.all([
+    // Try cache first for instant render
+    const cachedHome = cLoad('home_albums');
+    if (cachedHome && !isStale('home_albums', 'overall')) {
+      STATE.topAlbumsAllTime = cachedHome.allTime || [];
+      STATE.topAlbums52w     = cachedHome.w52     || [];
+      STATE.topAlbums5y      = cachedHome.overall  || [];
+      renderShelves();
+      return; // cache is fresh, nothing more to do
+    }
+
+    // Cache stale or missing — fetch from Last.fm
+    showSyncBar('Loading your top albums…', 10);
+    const [allTime, w52, overall] = await Promise.all([
       lfm('user.getTopAlbums', { period: 'overall', limit: 50 }),
       lfm('user.getTopAlbums', { period: '12month', limit: 50 }),
+      lfm('user.getTopAlbums', { period: 'overall', limit: 200 }),
     ]);
-    STATE.topAlbumsAllTime = allTime.topalbums?.album || [];
-    STATE.topAlbums52w = w52.topalbums?.album || [];
+    STATE.topAlbumsAllTime = allTime.topalbums?.album   || [];
+    STATE.topAlbums52w     = w52.topalbums?.album       || [];
+    STATE.topAlbums5y      = overall.topalbums?.album   || [];
 
-    // 5 year: we'll use overall and remove albums that are only in 52w
-    // Actually fetch 5y-ish using from/to timestamps
-    const now = Math.floor(Date.now()/1000);
-    const y1ago = now - 52*7*24*3600;
-    const y5ago = now - 5*365*24*3600;
-    const data5y = await lfm('user.getTopAlbums', { period: 'overall', limit: 200 });
-    STATE.topAlbums5y = data5y.topalbums?.album || [];
-
+    cSave('home_albums', {
+      allTime:  STATE.topAlbumsAllTime,
+      w52:      STATE.topAlbums52w,
+      overall:  STATE.topAlbums5y,
+      lastUpdated: Date.now()
+    });
+    hideSyncBar('✓ Shelves loaded');
     renderShelves();
   } catch(e) {
+    hideSyncBar();
     console.error('Home load error:', e);
     ['shelf-alltime','shelf-52w','shelf-5y'].forEach(id => {
       document.getElementById(id).innerHTML = '<div style="padding:20px;color:var(--text3);font-size:13px;">Could not load data</div>';
@@ -1209,42 +1357,83 @@ async function loadStats() {
 }
 
 async function loadStatsForPeriod(period) {
+  const cacheKey = `top_${period}`;
+  const cached = cLoad(cacheKey);
+
+  // Use cache if fresh
+  if (cached && !isStale(cacheKey, period)) {
+    STATE.topArtists     = cached.artists || [];
+    STATE.topAlbumsStats = cached.albums  || [];
+    const label = PERIOD_LABELS[period] || period;
+    document.getElementById('top-artists-period-label').textContent = label;
+    document.getElementById('top-albums-period-label').textContent  = label;
+    renderStats(period);
+    return;
+  }
+
   // Show loading in lists
   document.getElementById('top-artists-list').innerHTML = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
   document.getElementById('top-albums-list').innerHTML  = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
+  showSyncBar(`Fetching ${PERIOD_LABELS[period] || period} stats…`, 30);
+
   try {
     const [topArtists, topAlbums] = await Promise.all([
       lfm('user.getTopArtists', { period, limit: 20 }),
       lfm('user.getTopAlbums',  { period, limit: 20 }),
     ]);
-    STATE.topArtists = topArtists.topartists?.artist || [];
-    STATE.topAlbumsStats = topAlbums.topalbums?.album || [];
+    STATE.topArtists     = topArtists.topartists?.artist || [];
+    STATE.topAlbumsStats = topAlbums.topalbums?.album    || [];
+
+    // Cache it
+    cSave(cacheKey, { artists: STATE.topArtists, albums: STATE.topAlbumsStats, lastUpdated: Date.now() });
+    hideSyncBar();
+
     const label = PERIOD_LABELS[period] || period;
     document.getElementById('top-artists-period-label').textContent = label;
     document.getElementById('top-albums-period-label').textContent  = label;
     renderStats(period);
   } catch(e) {
+    hideSyncBar();
     console.error('Stats period error:', e);
   }
 }
 
 async function buildYearlyScrobbles(weeksByYear) {
-  // Fetch one week per year (first week) to get chart, but easier: use getScrobbleCount approximation
-  // Actually use user.getRecentTracks with from/to for each year - just get total pages
+  const thisYear = new Date().getFullYear();
   const years = Object.keys(weeksByYear).map(Number).sort();
-  STATE.yearlyScrobbles = {};
-  // Batch: for each year, fetch page 1 with limit 1 to get total
-  const promises = years.map(async yr => {
+
+  // Load from cache first
+  const cached = cLoad('yearly') || {};
+  STATE.yearlyScrobbles = { ...cached };
+  delete STATE.yearlyScrobbles.lastUpdated;
+  delete STATE.yearlyScrobbles.lastYear;
+
+  // Past years never change — only fetch missing ones + current year
+  const missing = years.filter(yr => yr < thisYear && !STATE.yearlyScrobbles[yr]);
+  const needsFetch = [...missing, thisYear]; // always refresh current year
+  const total = needsFetch.length;
+
+  showSyncBar(`Loading yearly scrobbles… 0 / ${total}`, 5);
+
+  // Fetch sequentially to avoid rate limiting (150ms between calls)
+  for (let i = 0; i < needsFetch.length; i++) {
+    const yr = needsFetch[i];
+    showSyncBar(`Loading ${yr} scrobbles… (${i+1} / ${total})`, 5 + Math.round(85 * i / total));
     try {
       const from = Math.floor(new Date(yr, 0, 1).getTime()/1000);
-      const to = Math.floor(new Date(yr, 11, 31, 23, 59, 59).getTime()/1000);
+      const to   = Math.floor(new Date(yr, 11, 31, 23, 59, 59).getTime()/1000);
       const data = await lfm('user.getRecentTracks', { from, to, limit: 1 });
-      const total = parseInt(data.recenttracks?.['@attr']?.total || 0);
-      STATE.yearlyScrobbles[yr] = total;
-    } catch { STATE.yearlyScrobbles[yr] = 0; }
-  });
-  await Promise.all(promises);
+      STATE.yearlyScrobbles[yr] = parseInt(data.recenttracks?.['@attr']?.total || 0);
+    } catch { STATE.yearlyScrobbles[yr] = STATE.yearlyScrobbles[yr] || 0; }
+    if (i < needsFetch.length - 1) await sleep(150);
+  }
+
+  // Save to cache (with metadata)
+  cSave('yearly', { ...STATE.yearlyScrobbles, lastUpdated: Date.now(), lastYear: thisYear });
+  hideSyncBar(`✓ Scrobble history loaded`);
 }
+
+function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
 
 function renderStats(period = 'overall') {
   const u = STATE.userInfo;
@@ -1414,75 +1603,102 @@ async function loadWrappedYear(year) {
   const panelsEl = document.getElementById('wrapped-panels');
   panelsEl.innerHTML = '<div class="page-loading"><div class="load-spinner"></div><div class="load-text">Loading ' + year + '…</div></div>';
 
+  // Check localStorage cache (past years are immutable, cache for 1 week)
+  const wCacheKey = `wrapped_${year}`;
+  const thisYear  = new Date().getFullYear();
+  const wCached   = cLoad(wCacheKey);
+  const wStale    = isStale(wCacheKey, year < thisYear ? 'wrapped' : '7day');
+
+  if (wCached && !wStale) {
+    STATE.wrappedCache[year] = wCached;
+    renderWrappedYear(year, wCached);
+    return;
+  }
+
   try {
     const from = Math.floor(new Date(year, 0, 1).getTime()/1000);
     const to   = Math.floor(new Date(year, 11, 31, 23, 59, 59).getTime()/1000);
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    // 1. Monthly scrobble counts (12 parallel calls)
-    const monthCounts = await Promise.all(
-      Array.from({length:12}, (_, m) => {
-        const mFrom = Math.floor(new Date(year, m, 1).getTime()/1000);
-        const mTo   = Math.floor(new Date(year, m+1, 0, 23, 59, 59).getTime()/1000);
-        return lfm('user.getRecentTracks', { from: mFrom, to: mTo, limit: 1 })
-          .then(d => parseInt(d.recenttracks?.['@attr']?.total || 0)).catch(() => 0);
-      })
-    );
+    // 1. Monthly counts — sequential with delay to avoid rate limits
+    showSyncBar(`Loading ${year} monthly data… 1/12`, 10);
+    const monthCounts = [];
+    for (let m = 0; m < 12; m++) {
+      const mFrom = Math.floor(new Date(year, m, 1).getTime()/1000);
+      const mTo   = Math.floor(new Date(year, m+1, 0, 23, 59, 59).getTime()/1000);
+      showSyncBar(`Loading ${year} monthly data… ${m+1}/12`, 10 + Math.round(40 * m / 12));
+      try {
+        const d = await lfm('user.getRecentTracks', { from: mFrom, to: mTo, limit: 1 });
+        monthCounts.push(parseInt(d.recenttracks?.['@attr']?.total || 0));
+      } catch { monthCounts.push(0); }
+      await sleep(120);
+    }
     const totalYear = monthCounts.reduce((a,b) => a+b, 0);
     const peakMonth = monthCounts.indexOf(Math.max(...monthCounts));
 
-    // 2. Use weekly album/artist charts to build top lists for the year
-    //    Get all weekly chart boundaries that overlap this year
-    const chartList = await lfm('user.getWeeklyChartList');
-    const yearCharts = (chartList.weeklychartlist?.chart || []).filter(c => {
-      const wYear = new Date(parseInt(c.from)*1000).getFullYear();
-      return wYear === year;
-    });
-
-    // Aggregate weekly album charts
-    const albumTotals = {};
-    const artistTotals = {};
-    // Fetch up to 20 weekly charts in parallel (enough to cover a year)
-    const weekFetches = yearCharts.slice(0, 52).map(wc =>
-      Promise.all([
-        lfm('user.getWeeklyAlbumChart', { from: wc.from, to: wc.to }).catch(()=>null),
-        lfm('user.getWeeklyArtistChart', { from: wc.from, to: wc.to }).catch(()=>null),
-      ])
+    // 2. Top albums/artists for the year via getTopAlbums with date range
+    //    Last.fm getTopAlbums doesn't support from/to, so use weekly charts
+    showSyncBar(`Loading ${year} top albums…`, 55);
+    const chartList  = await lfm('user.getWeeklyChartList');
+    const yearCharts = (chartList.weeklychartlist?.chart || []).filter(c =>
+      new Date(parseInt(c.from)*1000).getFullYear() === year
     );
-    const weekResults = await Promise.all(weekFetches);
-    for (const [albumRes, artistRes] of weekResults) {
-      for (const a of (albumRes?.weeklyalbumchart?.album || [])) {
-        const key = `${(a.artist?.['#text']||'').toLowerCase()}::${(a.name||'').toLowerCase()}`;
-        albumTotals[key] = albumTotals[key] || { name: a.name, artist: a.artist?.['#text']||'', plays: 0, image: a.image||[] };
-        albumTotals[key].plays += parseInt(a.playcount||0);
-      }
-      for (const a of (artistRes?.weeklyartistchart?.artist || [])) {
-        const key = (a.name||'').toLowerCase();
-        artistTotals[key] = artistTotals[key] || { name: a.name, plays: 0, image: a.image||[] };
-        artistTotals[key].plays += parseInt(a.playcount||0);
-      }
+
+    const albumTotals  = {};
+    const artistTotals = {};
+
+    // Sequential weekly fetches with small delay
+    for (let i = 0; i < yearCharts.length; i++) {
+      const wc = yearCharts[i];
+      showSyncBar(`Loading ${year} weekly charts… ${i+1}/${yearCharts.length}`, 55 + Math.round(35 * i / yearCharts.length));
+      try {
+        const [albumRes, artistRes] = await Promise.all([
+          lfm('user.getWeeklyAlbumChart',  { from: wc.from, to: wc.to }),
+          lfm('user.getWeeklyArtistChart', { from: wc.from, to: wc.to }),
+        ]);
+        for (const a of (albumRes?.weeklyalbumchart?.album || [])) {
+          const k = `${(a.artist?.['#text']||'').toLowerCase()}::${(a.name||'').toLowerCase()}`;
+          if (!albumTotals[k]) albumTotals[k] = { name: a.name, artist: a.artist?.['#text']||'', plays: 0, image: a.image||[] };
+          albumTotals[k].plays += parseInt(a.playcount||0);
+        }
+        for (const a of (artistRes?.weeklyartistchart?.artist || [])) {
+          const k = (a.name||'').toLowerCase();
+          if (!artistTotals[k]) artistTotals[k] = { name: a.name, plays: 0, image: a.image||[] };
+          artistTotals[k].plays += parseInt(a.playcount||0);
+        }
+      } catch(e) { /* skip failed week */ }
+      await sleep(100);
     }
-    const albums  = Object.values(albumTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
+    const albums  = Object.values(albumTotals).sort((a,b)  => b.plays-a.plays).slice(0,10);
     const artists = Object.values(artistTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
 
-    // 3. First & last scrobble of year
+    // 3. First & last scrobble
+    showSyncBar(`Loading ${year} first & last scrobble…`, 93);
     const [recentFirst, recentLast] = await Promise.all([
       lfm('user.getRecentTracks', { from, to, limit: 1, page: 1 }),
       lfm('user.getRecentTracks', { from, to, limit: 1 }),
     ]);
     const firstTrack = recentFirst.recenttracks?.track?.[0];
     const lastTracks = recentLast.recenttracks?.track || [];
-    const lastTrack  = Array.isArray(lastTracks) ? lastTracks.find(t => !t['@attr']?.nowplaying) : (lastTracks['@attr']?.nowplaying ? null : lastTracks);
+    const lastTrack  = Array.isArray(lastTracks)
+      ? lastTracks.find(t => !t['@attr']?.nowplaying)
+      : (!lastTracks['@attr']?.nowplaying ? lastTracks : null);
 
     const paletteIdx = year % YEAR_PALETTES.length;
     const palette    = YEAR_PALETTES[paletteIdx];
 
     const data = { albums, artists, monthCounts, totalYear, peakMonth, monthNames, palette, firstTrack, lastTrack };
+
+    // Save to localStorage — past years permanently, current year short TTL
+    cSave(wCacheKey, { ...data, lastUpdated: Date.now() });
     STATE.wrappedCache[year] = data;
+    hideSyncBar(`✓ ${year} loaded`);
     renderWrappedYear(year, data);
   } catch(e) {
+    hideSyncBar();
     console.error('Wrapped error:', e);
-    document.getElementById('wrapped-panels').innerHTML = '<div style="padding:40px;color:var(--text3)">Could not load data for ' + year + ': ' + e.message + '</div>';
+    document.getElementById('wrapped-panels').innerHTML =
+      `<div style="padding:40px;color:var(--text3)">Could not load data for ${year}: ${e.message}</div>`;
   }
 }
 
