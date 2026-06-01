@@ -25,8 +25,6 @@
   --red: #c0392b;
   --radius: 12px;
   --radius-sm: 8px;
-  --shelf-wood: linear-gradient(180deg, #c4a882 0%, #a8885e 40%, #8b6f47 100%);
-  --shelf-shadow: 0 4px 12px rgba(0,0,0,0.18);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-font-smoothing: antialiased; }
@@ -139,58 +137,33 @@ body {
 .home-title em { color: var(--accent2); font-style: italic; }
 .home-subtitle { font-size: 14px; color: var(--text3); margin-top: 8px; }
 
-.shelf-section { margin-bottom: 56px; }
+.shelf-section { margin-bottom: 48px; }
 .shelf-label {
   font-size: 11px; font-weight: 600; color: var(--text4); text-transform: uppercase;
-  letter-spacing: 2px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  letter-spacing: 2px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
 }
 .shelf-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-.shelf-wall {
-  background: #f7f3ee;
-  border-radius: 16px;
-  padding: 60px 28px 0;   /* extra top so hover lift is visible */
-  position: relative;
-  border: 1px solid #e8e0d4;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,.04);
-  overflow: visible;       /* never clip children */
-}
 .shelf-scroll-wrap {
   overflow-x: auto;
-  overflow-y: visible;     /* tooltip can escape upward */
+  overflow-y: visible;
   scrollbar-width: thin;
-  scrollbar-color: #c4a882 #f0ebe3;
-  padding: 0 4px;
+  scrollbar-color: var(--border) transparent;
+  padding-bottom: 8px;
 }
 .shelf-scroll-wrap::-webkit-scrollbar { height: 4px; }
-.shelf-scroll-wrap::-webkit-scrollbar-track { background: #f0ebe3; border-radius: 2px; }
-.shelf-scroll-wrap::-webkit-scrollbar-thumb { background: #c4a882; border-radius: 2px; }
+.shelf-scroll-wrap::-webkit-scrollbar-track { background: transparent; }
+.shelf-scroll-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .shelf-records {
-  display: flex; gap: 14px; align-items: flex-end;
-  min-height: 160px;
+  display: flex; gap: 16px; align-items: flex-end;
+  min-height: 175px;
   width: max-content; min-width: 100%;
-  padding-bottom: 0;
-}
-
-.shelf-plank {
-  height: 18px;
-  background: var(--shelf-wood);
-  border-radius: 4px;
-  margin: 0 -28px;
-  box-shadow: var(--shelf-shadow);
-  border-top: 1px solid #d4b896;
-  position: relative;
-}
-.shelf-plank::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(90deg, rgba(255,255,255,.15) 0%, transparent 30%, rgba(0,0,0,.05) 70%, transparent 100%);
-  border-radius: 4px;
+  padding: 12px 0 4px;
 }
 
 /* ─── RECORD CARD ─── */
 .record-card {
-  flex-shrink: 0; width: 130px;
+  flex-shrink: 0; width: 160px;
   cursor: pointer; position: relative;
   transform-origin: bottom center;
   transition: transform .3s cubic-bezier(.34,1.56,.64,1);
@@ -202,27 +175,27 @@ body {
 }
 .record-card:hover .record-cover-shadow { opacity: 1; }
 .record-cover {
-  width: 130px; height: 130px;
-  border-radius: 4px;
+  width: 160px; height: 160px;
+  border-radius: 6px;
   object-fit: cover;
   display: block;
   background: var(--bg3);
-  box-shadow: 2px 2px 8px rgba(0,0,0,.15);
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
   position: relative;
 }
 .record-cover-placeholder {
-  width: 130px; height: 130px;
-  border-radius: 4px;
+  width: 160px; height: 160px;
+  border-radius: 6px;
   background: linear-gradient(135deg, #2a2a25 0%, #3d3d38 50%, #1a1a16 100%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  box-shadow: 2px 2px 8px rgba(0,0,0,.15);
-  text-align: center; padding: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  text-align: center; padding: 14px;
 }
 .record-cover-placeholder .ph-artist { font-size: 10px; color: rgba(255,255,255,.6); margin-bottom: 4px; }
-.record-cover-placeholder .ph-album { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.9); line-height: 1.3; }
+.record-cover-placeholder .ph-album { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.9); line-height: 1.3; }
 .record-cover-shadow {
-  position: absolute; bottom: 10px; left: 8px; right: 8px; height: 20px;
-  background: rgba(0,0,0,.3); filter: blur(8px); border-radius: 50%;
+  position: absolute; bottom: 10px; left: 10px; right: 10px; height: 20px;
+  background: rgba(0,0,0,.3); filter: blur(10px); border-radius: 50%;
   opacity: 0; transition: opacity .3s;
 }
 /* Tooltip is rendered in a fixed portal via JS, not inside the card */
@@ -602,26 +575,22 @@ canvas { max-height: 220px !important; }
 
       <div class="shelf-section">
         <div class="shelf-label">All-time top 10</div>
-        <div class="shelf-wall">
-          <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-alltime"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
-          <div class="shelf-plank"></div>
-        </div>
+        <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-alltime"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
+      </div>
+
+      <div class="shelf-section">
+        <div class="shelf-label">This month</div>
+        <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-1month"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
       </div>
 
       <div class="shelf-section">
         <div class="shelf-label">Last 52 weeks</div>
-        <div class="shelf-wall">
-          <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-52w"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
-          <div class="shelf-plank"></div>
-        </div>
+        <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-52w"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
       </div>
 
       <div class="shelf-section">
         <div class="shelf-label">Last 5 years · excluding past 52 weeks</div>
-        <div class="shelf-wall">
-          <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-5y"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
-          <div class="shelf-plank"></div>
-        </div>
+        <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-5y"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
       </div>
     </div>
 
@@ -754,6 +723,7 @@ let STATE = {
   userInfo: null,
   collection: [],       // from CSV
   topAlbumsAllTime: [], // Last.fm
+  topAlbums1month: [],
   topAlbums52w: [],
   topAlbums5y: [],
   topArtists: [],
@@ -945,15 +915,15 @@ async function initDashboard() {
       try {
         const csvText = await fetchCSV(csvUrl);
         STATE.collection = parseCSV(csvText);
-        sessionStorage.setItem('collection_csv_url', csvUrl);
+        localStorage.setItem('vinyl_csv_url', csvUrl);
       } catch(csvErr) {
         console.warn('Could not load collection CSV:', csvErr);
         // Non-fatal — dashboard loads without collection
       }
     }
 
-    // Save to sessionStorage for convenience
-    sessionStorage.setItem('lfm_username', username);
+    // Save username to localStorage (survives tab/browser close)
+    localStorage.setItem('vinyl_username', username);
 
     document.getElementById('setup-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
@@ -1052,8 +1022,9 @@ async function loadHomeData() {
     // Try cache first for instant render
     const cachedHome = cLoad('home_albums');
     if (cachedHome && !isStale('home_albums', 'overall')) {
-      STATE.topAlbumsAllTime = cachedHome.allTime || [];
-      STATE.topAlbums52w     = cachedHome.w52     || [];
+      STATE.topAlbumsAllTime = cachedHome.allTime  || [];
+      STATE.topAlbums1month  = cachedHome.month    || [];
+      STATE.topAlbums52w     = cachedHome.w52      || [];
       STATE.topAlbums5y      = cachedHome.overall  || [];
       renderShelves();
       return; // cache is fresh, nothing more to do
@@ -1061,17 +1032,20 @@ async function loadHomeData() {
 
     // Cache stale or missing — fetch from Last.fm
     showSyncBar('Loading your top albums…', 10);
-    const [allTime, w52, overall] = await Promise.all([
+    const [allTime, month, w52, overall] = await Promise.all([
       lfm('user.getTopAlbums', { period: 'overall', limit: 50 }),
+      lfm('user.getTopAlbums', { period: '1month', limit: 50 }),
       lfm('user.getTopAlbums', { period: '12month', limit: 50 }),
       lfm('user.getTopAlbums', { period: 'overall', limit: 200 }),
     ]);
     STATE.topAlbumsAllTime = lfmArr(allTime.topalbums?.album);
+    STATE.topAlbums1month  = lfmArr(month.topalbums?.album);
     STATE.topAlbums52w     = lfmArr(w52.topalbums?.album);
     STATE.topAlbums5y      = lfmArr(overall.topalbums?.album);
 
     cSave('home_albums', {
       allTime:  STATE.topAlbumsAllTime,
+      month:    STATE.topAlbums1month,
       w52:      STATE.topAlbums52w,
       overall:  STATE.topAlbums5y,
       lastUpdated: Date.now()
@@ -1081,7 +1055,7 @@ async function loadHomeData() {
   } catch(e) {
     hideSyncBar();
     console.error('Home load error:', e);
-    ['shelf-alltime','shelf-52w','shelf-5y'].forEach(id => {
+    ['shelf-alltime','shelf-1month','shelf-52w','shelf-5y'].forEach(id => {
       document.getElementById(id).innerHTML = '<div style="padding:20px;color:var(--text3);font-size:13px;">Could not load data</div>';
     });
   }
@@ -1092,23 +1066,28 @@ function albumKey(a) {
 }
 
 function renderShelves() {
-  const allTop10 = STATE.topAlbumsAllTime.slice(0,50);
+  // Shelf 1: All-time top 10
   const shelf1Keys = new Set();
-  const shelf1 = pickTop10(allTop10, shelf1Keys);
+  const shelf1 = pickTop10(STATE.topAlbumsAllTime.slice(0,50), shelf1Keys);
 
-  const w52 = STATE.topAlbums52w.slice(0,50);
+  // Shelf 2: This month (dedupe against all-time)
   const shelf2Keys = new Set(shelf1Keys);
-  const shelf2 = pickTop10(w52, shelf2Keys);
+  const shelf2 = pickTop10(STATE.topAlbums1month.slice(0,50), shelf2Keys);
 
-  // For shelf 3: overall minus 52w, to approximate 5y-excl-52w
+  // Shelf 3: Last 52 weeks (dedupe against all-time + month)
+  const shelf3Keys = new Set([...shelf1Keys, ...shelf2Keys]);
+  const shelf3 = pickTop10(STATE.topAlbums52w.slice(0,50), shelf3Keys);
+
+  // Shelf 4: Overall minus 52w, to approximate 5y-excl-52w
   const w52Keys = new Set(STATE.topAlbums52w.slice(0,50).map(albumKey));
   const filtered5y = STATE.topAlbums5y.filter(a => !w52Keys.has(albumKey(a)));
-  const shelf3Keys = new Set([...shelf1Keys, ...shelf2Keys]);
-  const shelf3 = pickTop10(filtered5y, shelf3Keys);
+  const shelf4Keys = new Set([...shelf1Keys, ...shelf2Keys, ...shelf3Keys]);
+  const shelf4 = pickTop10(filtered5y, shelf4Keys);
 
   renderShelf('shelf-alltime', shelf1);
-  renderShelf('shelf-52w', shelf2);
-  renderShelf('shelf-5y', shelf3);
+  renderShelf('shelf-1month', shelf2);
+  renderShelf('shelf-52w', shelf3);
+  renderShelf('shelf-5y', shelf4);
 }
 
 function pickTop10(albums, usedKeys) {
@@ -1826,16 +1805,37 @@ async function loadThisWeek() {
     const now = Math.floor(Date.now()/1000);
     const weekAgo = now - 7*24*3600;
 
-    const [albumsData, artistsData, recentData] = await Promise.all([
+    // Top albums & artists use period-based endpoints (reliable, no 403)
+    const [albumsData, artistsData] = await Promise.all([
       lfm('user.getTopAlbums', { period: '7day', limit: 10 }),
       lfm('user.getTopArtists', { period: '7day', limit: 10 }),
-      lfm('user.getRecentTracks', { from: weekAgo, to: now, limit: 200 }),
     ]);
 
     const albums = lfmArr(albumsData?.topalbums?.album);
     const artists = lfmArr(artistsData?.topartists?.artist);
-    const tracks = lfmArr(recentData?.recenttracks?.track);
-    const totalWeek = parseInt(recentData?.recenttracks?.['@attr']?.total || tracks.length);
+
+    // Recent tracks for daily breakdown — use plain recent tracks (no from/to avoids 403)
+    // Fetch 200 most recent tracks and filter to past 7 days client-side
+    let tracks = [];
+    let totalWeek = 0;
+    try {
+      const recentData = await lfm('user.getRecentTracks', { limit: 200 });
+      const allTracks = lfmArr(recentData?.recenttracks?.track);
+      tracks = allTracks.filter(t => {
+        if (t['@attr']?.nowplaying) return false;
+        const ts = parseInt(t.date?.uts || 0);
+        return ts >= weekAgo;
+      });
+      totalWeek = tracks.length;
+      // If we got a full 200 and all are within the week, the real total may be higher
+      // Use the total from the artist plays sum as a better estimate
+      const artistTotal = artists.reduce((s,a) => s + parseInt(a.playcount||0), 0);
+      if (artistTotal > totalWeek) totalWeek = artistTotal;
+    } catch(recentErr) {
+      // Recent tracks unavailable — derive total from artist plays
+      console.warn('Recent tracks unavailable:', recentErr.message);
+      totalWeek = artists.reduce((s,a) => s + parseInt(a.playcount||0), 0);
+    }
 
     // Daily breakdown
     const dailyCounts = [0,0,0,0,0,0,0];
@@ -1984,17 +1984,17 @@ function buildGapsHTML(unplayed, rarelyPlayed, notOwned) {
 
 function filterGaps() {
   const fmt = (document.getElementById('gaps-filter-format')?.value || '').toLowerCase();
-  const allSections = document.querySelectorAll('.gaps-filterable');
-  allSections.forEach(row => {
-    const rowFmt = (row.dataset.format||'').toLowerCase();
-    row.style.display = (!fmt || rowFmt === fmt) ? '' : 'none';
+  document.querySelectorAll('.gaps-filterable').forEach(row => {
+    const rowFmt = (row.dataset.format || '').toLowerCase();
+    const visible = !fmt || rowFmt === fmt;
+    row.style.display = visible ? '' : 'none';
   });
-  // Update counts
-  document.querySelectorAll('.gaps-section-count').forEach(el => {
-    const list = el.closest('.gaps-card')?.querySelector('.top-list');
-    if (!list) return;
-    const visible = list.querySelectorAll('.gaps-filterable:not([style*="display: none"])').length;
-    el.textContent = visible;
+  // Update visible counts on each section
+  document.querySelectorAll('.gaps-card').forEach(card => {
+    const countEl = card.querySelector('.gaps-section-count');
+    if (!countEl) return;
+    const visible = card.querySelectorAll('.gaps-filterable:not([style*="none"])').length;
+    countEl.textContent = visible;
   });
 }
 
@@ -2046,12 +2046,13 @@ function openAlbumDetail(artist, album) {
 
 /* ─── AUTO-LOAD if saved ─── */
 window.addEventListener('DOMContentLoaded', () => {
-  const savedUser = sessionStorage.getItem('lfm_username');
-  const savedCsv = sessionStorage.getItem('collection_csv');
+  const savedUser = localStorage.getItem('vinyl_username');
+  const savedCsvUrl = localStorage.getItem('vinyl_csv_url');
   if (savedUser) {
     document.getElementById('input-username').value = savedUser;
-    const savedCsvUrl = sessionStorage.getItem('collection_csv_url');
     if (savedCsvUrl) document.getElementById('input-csv-url').value = savedCsvUrl;
+    // Auto-launch dashboard if we have saved credentials
+    initDashboard();
   }
 });
 </script>
