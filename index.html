@@ -885,11 +885,32 @@ function parseCSV(text) {
 
 /* ─── FETCH CSV FROM URL ─── */
 async function fetchCSV(url) {
-  // Use allorigins proxy to avoid CORS issues with Google Sheets
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error(`CSV fetch failed: HTTP ${res.status}`);
-  return res.text();
+  // Try allorigins /get (returns JSON wrapper so we can detect failures)
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
+    if (res.ok) {
+      const json = await res.json();
+      // allorigins returns contents:null when the upstream fetch failed
+      if (json.contents && json.status?.http_code === 200) {
+        return json.contents;
+      }
+      console.warn('allorigins returned null or non-200:', json.status);
+    }
+  } catch(e) {
+    console.warn('allorigins proxy failed:', e.message);
+  }
+
+  // Fallback: corsproxy.io
+  try {
+    const fallbackUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    const res = await fetch(fallbackUrl);
+    if (res.ok) return res.text();
+  } catch(e) {
+    console.warn('corsproxy.io fallback failed:', e.message);
+  }
+
+  throw new Error('Could not fetch collection — both CORS proxies failed. Check your Google Sheets "Publish to web" URL is still active.');
 }
 
 /* ─── INIT ─── */
@@ -915,10 +936,14 @@ async function initDashboard() {
       try {
         const csvText = await fetchCSV(csvUrl);
         STATE.collection = parseCSV(csvText);
+        if (STATE.collection.length === 0) {
+          console.warn('CSV parsed but returned 0 albums — check column headers match: Artist, Album, Year, Format, My Rating');
+        }
         localStorage.setItem('vinyl_csv_url', csvUrl);
       } catch(csvErr) {
-        console.warn('Could not load collection CSV:', csvErr);
-        // Non-fatal — dashboard loads without collection
+        console.error('Could not load collection CSV:', csvErr);
+        // Show a non-fatal warning in the dashboard
+        STATE.collectionError = csvErr.message;
       }
     }
 
@@ -1085,7 +1110,7 @@ function renderShelves() {
   const shelf4 = pickTop10(filtered5y, shelf4Keys);
 
   renderShelf('shelf-alltime', shelf1);
-  renderShelf('shelf-1month', shelf2);
+  renderShelf('shelf-1month', shelf2.length ? shelf2 : null, 'Not enough listening data this month yet');
   renderShelf('shelf-52w', shelf3);
   renderShelf('shelf-5y', shelf4);
 }
@@ -1100,14 +1125,14 @@ function pickTop10(albums, usedKeys) {
   return result;
 }
 
-function renderShelf(containerId, albums) {
+function renderShelf(containerId, albums, emptyMsg = 'Not enough data yet') {
   const el = document.getElementById(containerId);
-  if (!albums.length) { el.innerHTML = '<div style="padding:20px;color:var(--text3);font-size:13px;">Not enough data yet</div>'; return; }
+  if (!albums || !albums.length) { el.innerHTML = `<div style="padding:20px;color:var(--text3);font-size:13px;">${emptyMsg}</div>`; return; }
   el.innerHTML = albums.map((a, i) => {
     const artist = a.artist?.name || a.artist || '';
     const name   = a.name || '';
     const plays  = parseInt(a.playcount||0).toLocaleString();
-    const img    = a.image?.find(im => im.size === 'large')?.['#text'] || '';
+    const img    = lfmArr(a.image).find(im => im.size === 'large')?.['#text'] || '';
     const ttData = encodeURIComponent(JSON.stringify({ artist, name, plays }));
     const imgHtml = img
       ? `<img class="record-cover" src="${img}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
@@ -1153,11 +1178,15 @@ function renderCollection() {
   STATE.collectionLoaded = true;
   const items = STATE.collection;
   if (!items.length) {
+    const errorDetail = STATE.collectionError
+      ? `<div style="font-size:12px;color:var(--red);margin-top:8px;max-width:400px">${escHtml(STATE.collectionError)}</div>`
+      : '';
     document.getElementById('collection-grid').innerHTML = `
       <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text3)">
         <div style="font-size:40px;margin-bottom:12px">📀</div>
         <div style="font-size:15px;font-weight:500;margin-bottom:6px">No collection data</div>
         <div style="font-size:13px">Paste your Google Sheets CSV on the setup screen to see your collection here.</div>
+        ${errorDetail}
       </div>`;
     return;
   }
