@@ -716,7 +716,7 @@ canvas { max-height: 220px !important; }
         <div class="page-subtitle">Albums you own but rarely play · Artists you love but don't own</div>
       </div>
       <div class="collection-controls" style="margin-bottom:20px">
-        <select class="filter-select" id="gaps-filter-format" onchange="applyGapsFilter()">
+        <select class="filter-select" id="gaps-filter-format" onchange="filterGaps()">
           <option value="">All formats</option>
           <option value="CD">CD</option>
           <option value="mp3">MP3</option>
@@ -859,6 +859,14 @@ function hideSyncBar(finalMsg) {
 
 
 
+/* ─── LAST.FM ARRAY NORMALISER ─── */
+// Last.fm returns a plain object (not array) when there's only 1 result.
+// Always wrap with this before iterating.
+function lfmArr(val) {
+  if (!val) return [];
+  return Array.isArray(val) ? val : [val];
+}
+
 /* ─── API HELPER ─── */
 async function lfm(method, params = {}) {
   const url = new URL(BASE);
@@ -990,7 +998,7 @@ function refreshCurrentPage() {
   const p = STATE.currentPage;
   // Force re-fetch by resetting loaded flags and clearing page-specific cache
   if (p === 'home') {
-    cSave('home_albums', null);
+    try { localStorage.removeItem(cacheKey('home_albums')); } catch(e) {}
     loadHomeData();
   } else if (p === 'stats') {
     STATE.statsLoaded = false;
@@ -1001,7 +1009,7 @@ function refreshCurrentPage() {
   } else if (p === 'wrapped') {
     // Only clear current year cache (past years are permanent)
     const thisYear = new Date().getFullYear();
-    cSave(`wrapped_${thisYear}`, null);
+    try { localStorage.removeItem(cacheKey(`wrapped_${thisYear}`)); } catch(e) {}
     delete STATE.wrappedCache[thisYear];
     loadWrappedYear(thisYear);
   } else if (p === 'thisweek') {
@@ -1058,9 +1066,9 @@ async function loadHomeData() {
       lfm('user.getTopAlbums', { period: '12month', limit: 50 }),
       lfm('user.getTopAlbums', { period: 'overall', limit: 200 }),
     ]);
-    STATE.topAlbumsAllTime = allTime.topalbums?.album   || [];
-    STATE.topAlbums52w     = w52.topalbums?.album       || [];
-    STATE.topAlbums5y      = overall.topalbums?.album   || [];
+    STATE.topAlbumsAllTime = lfmArr(allTime.topalbums?.album);
+    STATE.topAlbums52w     = lfmArr(w52.topalbums?.album);
+    STATE.topAlbums5y      = lfmArr(overall.topalbums?.album);
 
     cSave('home_albums', {
       allTime:  STATE.topAlbumsAllTime,
@@ -1337,12 +1345,11 @@ async function setStatsPeriod(period) {
 }
 
 async function loadStats() {
-  STATE.statsLoaded = true;
   try {
     // Always load yearly scrobbles (overall)
     const weeklyChart = await lfm('user.getWeeklyChartList');
     const weeksByYear = {};
-    for (const ch of (weeklyChart.weeklychartlist?.chart || [])) {
+    for (const ch of lfmArr(weeklyChart.weeklychartlist?.chart)) {
       const yr = new Date(parseInt(ch.from)*1000).getFullYear();
       if (!weeksByYear[yr]) weeksByYear[yr] = [];
       weeksByYear[yr].push({ from: ch.from, to: ch.to });
@@ -1350,9 +1357,11 @@ async function loadStats() {
     STATE.weeksByYear = weeksByYear;
     await buildYearlyScrobbles(weeksByYear);
     await loadStatsForPeriod('overall');
+    STATE.statsLoaded = true; // only mark loaded on success
   } catch(e) {
     console.error('Stats error:', e);
-    document.getElementById('stats-cards').innerHTML = '<div style="padding:20px;color:var(--red)">Error loading stats: ' + e.message + '</div>';
+    document.getElementById('stats-cards').innerHTML = '<div style="padding:20px;color:var(--red)">Error loading stats: ' + escHtml(e.message) + '</div>';
+    STATE.statsLoaded = false;
   }
 }
 
@@ -1381,8 +1390,8 @@ async function loadStatsForPeriod(period) {
       lfm('user.getTopArtists', { period, limit: 20 }),
       lfm('user.getTopAlbums',  { period, limit: 20 }),
     ]);
-    STATE.topArtists     = topArtists.topartists?.artist || [];
-    STATE.topAlbumsStats = topAlbums.topalbums?.album    || [];
+    STATE.topArtists     = lfmArr(topArtists.topartists?.artist);
+    STATE.topAlbumsStats = lfmArr(topAlbums.topalbums?.album);
 
     // Cache it
     cSave(cacheKey, { artists: STATE.topArtists, albums: STATE.topAlbumsStats, lastUpdated: Date.now() });
@@ -1577,7 +1586,6 @@ const YEAR_PALETTES = [
 ];
 
 async function loadWrapped() {
-  STATE.wrappedLoaded = true;
   const regYear = STATE.userInfo ? new Date(parseInt(STATE.userInfo.registered?.unixtime||0)*1000).getFullYear() : 2007;
   const thisYear = new Date().getFullYear();
   const years = [];
@@ -1588,6 +1596,7 @@ async function loadWrapped() {
     `<button class="year-chip" data-year="${y}" onclick="loadWrappedYear(${y})">${y}</button>`
   ).join('');
 
+  STATE.wrappedLoaded = true;
   // Load current year by default
   await loadWrappedYear(thisYear);
 }
@@ -1640,7 +1649,7 @@ async function loadWrappedYear(year) {
     //    Last.fm getTopAlbums doesn't support from/to, so use weekly charts
     showSyncBar(`Loading ${year} top albums…`, 55);
     const chartList  = await lfm('user.getWeeklyChartList');
-    const yearCharts = (chartList.weeklychartlist?.chart || []).filter(c =>
+    const yearCharts = lfmArr(chartList.weeklychartlist?.chart).filter(c =>
       new Date(parseInt(c.from)*1000).getFullYear() === year
     );
 
@@ -1656,14 +1665,14 @@ async function loadWrappedYear(year) {
           lfm('user.getWeeklyAlbumChart',  { from: wc.from, to: wc.to }),
           lfm('user.getWeeklyArtistChart', { from: wc.from, to: wc.to }),
         ]);
-        for (const a of (albumRes?.weeklyalbumchart?.album || [])) {
+        for (const a of lfmArr(albumRes?.weeklyalbumchart?.album)) {
           const k = `${(a.artist?.['#text']||'').toLowerCase()}::${(a.name||'').toLowerCase()}`;
-          if (!albumTotals[k]) albumTotals[k] = { name: a.name, artist: a.artist?.['#text']||'', plays: 0, image: a.image||[] };
+          if (!albumTotals[k]) albumTotals[k] = { name: a.name, artist: a.artist?.['#text']||'', plays: 0, image: lfmArr(a.image) };
           albumTotals[k].plays += parseInt(a.playcount||0);
         }
-        for (const a of (artistRes?.weeklyartistchart?.artist || [])) {
+        for (const a of lfmArr(artistRes?.weeklyartistchart?.artist)) {
           const k = (a.name||'').toLowerCase();
-          if (!artistTotals[k]) artistTotals[k] = { name: a.name, plays: 0, image: a.image||[] };
+          if (!artistTotals[k]) artistTotals[k] = { name: a.name, plays: 0, image: lfmArr(a.image) };
           artistTotals[k].plays += parseInt(a.playcount||0);
         }
       } catch(e) { /* skip failed week */ }
@@ -1672,17 +1681,21 @@ async function loadWrappedYear(year) {
     const albums  = Object.values(albumTotals).sort((a,b)  => b.plays-a.plays).slice(0,10);
     const artists = Object.values(artistTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
 
-    // 3. First & last scrobble
+    // 3. First & last scrobble — fetch first page ascending, last page descending
     showSyncBar(`Loading ${year} first & last scrobble…`, 93);
-    const [recentFirst, recentLast] = await Promise.all([
-      lfm('user.getRecentTracks', { from, to, limit: 1, page: 1 }),
-      lfm('user.getRecentTracks', { from, to, limit: 1 }),
-    ]);
-    const firstTrack = recentFirst.recenttracks?.track?.[0];
-    const lastTracks = recentLast.recenttracks?.track || [];
-    const lastTrack  = Array.isArray(lastTracks)
-      ? lastTracks.find(t => !t['@attr']?.nowplaying)
-      : (!lastTracks['@attr']?.nowplaying ? lastTracks : null);
+    let firstTrack = null, lastTrack = null;
+    try {
+      // First scrobble: page 1, oldest first (use from/to with page 1 gives earliest)
+      const firstRes = await lfm('user.getRecentTracks', { from, to, limit: 1, page: 1 });
+      const firstTracks = lfmArr(firstRes.recenttracks?.track);
+      firstTrack = firstTracks.find(t => !t['@attr']?.nowplaying) || null;
+    } catch(e) { /* ignore */ }
+    try {
+      // Last scrobble: no page param → most recent
+      const lastRes = await lfm('user.getRecentTracks', { from, to, limit: 1 });
+      const lastTracks = lfmArr(lastRes.recenttracks?.track);
+      lastTrack = lastTracks.find(t => !t['@attr']?.nowplaying) || null;
+    } catch(e) { /* ignore */ }
 
     const paletteIdx = year % YEAR_PALETTES.length;
     const palette    = YEAR_PALETTES[paletteIdx];
@@ -1729,7 +1742,7 @@ function renderWrappedYear(year, d) {
         ${albums[0] ? `
         <div>
           <div class="wrapped-kpi-val" style="font-size:16px;line-height:1.3">${escHtml(albums[0].name)}</div>
-          <div class="wrapped-kpi-label">Top album · ${parseInt(albums[0].playcount||0).toLocaleString()} plays</div>
+          <div class="wrapped-kpi-label">Top album · ${(albums[0].plays||0).toLocaleString()} plays</div>
         </div>` : ''}
       </div>
     </div>
@@ -1739,7 +1752,7 @@ function renderWrappedYear(year, d) {
         <div class="wrapped-card-title">Top albums</div>
         <div class="top-list">
           ${albums.slice(0,10).map((a,i) => {
-            const img = a.image?.find?.(im=>im.size==='medium')?.['#text'] || a.image?.[1]?.['#text'] || '';
+            const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || lfmArr(a.image)[1]?.['#text'] || '';
             const artist = a.artist?.name || a.artist || '';
             return `<div class="top-row">
               <div class="top-rank">${i+1}</div>
@@ -1754,7 +1767,7 @@ function renderWrappedYear(year, d) {
         <div class="wrapped-card-title">Top artists</div>
         <div class="top-list">
           ${artists.slice(0,10).map((a,i) => {
-            const img = a.image?.find?.(im=>im.size==='medium')?.['#text'] || a.image?.[1]?.['#text'] || '';
+            const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || lfmArr(a.image)[1]?.['#text'] || '';
             return `<div class="top-row">
               <div class="top-rank">${i+1}</div>
               ${img ? `<img class="top-art" src="${escHtml(img)}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
@@ -1809,7 +1822,6 @@ function renderWrappedYear(year, d) {
    THIS WEEK PAGE
    ══════════════════════════════════════════════ */
 async function loadThisWeek() {
-  STATE.weekLoaded = true;
   try {
     const now = Math.floor(Date.now()/1000);
     const weekAgo = now - 7*24*3600;
@@ -1820,9 +1832,9 @@ async function loadThisWeek() {
       lfm('user.getRecentTracks', { from: weekAgo, to: now, limit: 200 }),
     ]);
 
-    const albums = albumsData?.topalbums?.album || [];
-    const artists = artistsData?.topartists?.artist || [];
-    const tracks = recentData?.recenttracks?.track || [];
+    const albums = lfmArr(albumsData?.topalbums?.album);
+    const artists = lfmArr(artistsData?.topartists?.artist);
+    const tracks = lfmArr(recentData?.recenttracks?.track);
     const totalWeek = parseInt(recentData?.recenttracks?.['@attr']?.total || tracks.length);
 
     // Daily breakdown
@@ -1880,7 +1892,7 @@ async function loadThisWeek() {
           <div class="week-card-title">Top albums this week</div>
           <div class="top-list">
             ${albums.slice(0,10).map((a,i) => {
-              const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
+              const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text']||'';
               const artist = a.artist?.name||'';
               return `<div class="top-row">
                 <div class="top-rank">${i+1}</div>
@@ -1895,7 +1907,7 @@ async function loadThisWeek() {
           <div class="week-card-title">Top artists this week</div>
           <div class="top-list">
             ${artists.slice(0,10).map((a,i) => {
-              const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
+              const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text']||'';
               return `<div class="top-row">
                 <div class="top-rank">${i+1}</div>
                 ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
@@ -1907,9 +1919,11 @@ async function loadThisWeek() {
         </div>
       </div>
     `;
+    STATE.weekLoaded = true; // only mark loaded on success
   } catch(e) {
     console.error('This week error:', e);
-    document.getElementById('thisweek-content').innerHTML = '<div style="padding:40px;color:var(--text3)">Could not load this week\'s data</div>';
+    document.getElementById('thisweek-content').innerHTML = `<div style="padding:40px;color:var(--text3)">Could not load this week's data: ${escHtml(e.message)}</div>`;
+    STATE.weekLoaded = false; // allow retry
   }
 }
 
@@ -1990,11 +2004,11 @@ async function loadGaps() {
     // Need top artists and collection
     if (!STATE.topArtists.length) {
       const ta = await lfm('user.getTopArtists', { period: 'overall', limit: 100 });
-      STATE.topArtists = ta.topartists?.artist || [];
+      STATE.topArtists = lfmArr(ta.topartists?.artist);
     }
     if (!STATE.topAlbumsAllTime.length) {
       const ta = await lfm('user.getTopAlbums', { period: 'overall', limit: 200 });
-      STATE.topAlbumsAllTime = ta.topalbums?.album || [];
+      STATE.topAlbumsAllTime = lfmArr(ta.topalbums?.album);
     }
 
     const playsMap = buildPlaysMap();
