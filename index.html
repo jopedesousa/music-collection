@@ -91,7 +91,7 @@ body {
 /* ─── TOP BAR ─── */
 #dashboard { display: none; }
 .top-bar {
-  height: 56px; display: flex; align-items: center; justify-content: space-between;
+  height: 56px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
   padding: 0 24px; background: rgba(255,255,255,.92);
   backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 100;
@@ -101,7 +101,8 @@ body {
   font-size: 22px; color: var(--text); letter-spacing: -.5px; cursor: pointer;
 }
 .top-logo span { color: var(--accent2); }
-.top-nav { display: flex; gap: 2px; }
+.top-nav { display: flex; gap: 2px; justify-content: center; }
+.top-right-wrap { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .nav-btn {
   padding: 7px 14px; font-size: 13px; font-weight: 500; color: var(--text3);
   cursor: pointer; border: none; background: none; border-radius: 8px;
@@ -736,7 +737,7 @@ canvas { max-height: 220px !important; }
       <button class="nav-btn" data-page="wrapped" onclick="navigate('wrapped')">Wrapped</button>
       <button class="nav-btn" data-page="gaps" onclick="navigate('gaps')">Discover</button>
     </div>
-    <div class="top-right" style="display:flex;align-items:center;gap:8px">
+    <div class="top-right-wrap">
       <button class="nav-btn" onclick="refreshCurrentPage()" title="Refresh this page's data" style="font-size:11px;padding:5px 10px">↻ Refresh</button>
       <button class="nav-btn" onclick="clearAllCache()" title="Clear all cached data" style="font-size:11px;padding:5px 10px;color:var(--text4)">Clear cache</button>
       <div class="user-chip">
@@ -837,7 +838,7 @@ canvas { max-height: 220px !important; }
         </div>
         <div class="chart-card" style="margin-bottom:0">
           <div class="chart-header"><div class="chart-title">Top albums</div><div class="chart-meta" id="top-albums-period-label">all time</div></div>
-          <div class="collection-grid" id="top-albums-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-top:4px"></div>
+          <div class="collection-grid" id="top-albums-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-top:4px"></div>
         </div>
       </div>
     </div>
@@ -1964,13 +1965,21 @@ function extractDominantColour(imgUrl, callback) {
         r += data[i]; g += data[i+1]; b += data[i+2]; count++;
       }
       r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
-      // Darken for background use
-      const darken = 0.35;
-      const bg = `rgb(${Math.round(r*darken)},${Math.round(g*darken)},${Math.round(b*darken)})`;
-      // Brightness of bg to decide text colour
-      const lum = 0.299*r + 0.587*g + 0.114*b;
-      const fg = lum > 128 ? '#1a1a18' : '#f8f8f4';
-      const accent = `rgb(${Math.min(255,Math.round(r*1.4))},${Math.min(255,Math.round(g*1.4))},${Math.min(255,Math.round(b*1.4))})`;
+
+      // Darken significantly for background use
+      const darken = 0.25;
+      const bgR = Math.round(r*darken);
+      const bgG = Math.round(g*darken);
+      const bgB = Math.round(b*darken);
+      const bg = `rgb(${bgR},${bgG},${bgB})`;
+
+      // Compute luminance of the ACTUAL darkened background colour
+      const bgLum = 0.299*bgR + 0.587*bgG + 0.114*bgB;
+      // Dark bg (lum < 60) → always use light text for readability
+      const fg = bgLum < 60 ? '#f0ede6' : (bgLum < 160 ? '#f0ede6' : '#1a1a18');
+
+      // Accent: a lighter tint of the source colour for highlights
+      const accent = `rgb(${Math.min(255,Math.round(r*1.5))},${Math.min(255,Math.round(g*1.5))},${Math.min(255,Math.round(b*1.5))})`;
       callback({ bg, fg, accent });
     } catch(e) { callback(null); }
   };
