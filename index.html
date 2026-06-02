@@ -1611,11 +1611,11 @@ async function loadStats() {
 }
 
 async function loadStatsForPeriod(period) {
-  const cacheKey = `top_${period}`;
-  const cached = cLoad(cacheKey);
+  const periodCacheKey = `top_${period}`;
+  const cached = cLoad(periodCacheKey);
 
   // Use cache if fresh
-  if (cached && !isStale(cacheKey, period)) {
+  if (cached && !isStale(periodCacheKey, period)) {
     STATE.topArtists     = cached.artists || [];
     STATE.topAlbumsStats = cached.albums  || [];
     const label = PERIOD_LABELS[period] || period;
@@ -1638,8 +1638,7 @@ async function loadStatsForPeriod(period) {
     STATE.topArtists     = lfmArr(topArtists.topartists?.artist);
     STATE.topAlbumsStats = lfmArr(topAlbums.topalbums?.album);
 
-    // Cache it
-    cSave(cacheKey, { artists: STATE.topArtists, albums: STATE.topAlbumsStats, lastUpdated: Date.now() });
+    cSave(periodCacheKey, { artists: STATE.topArtists, albums: STATE.topAlbumsStats, lastUpdated: Date.now() });
     hideSyncBar();
 
     const label = PERIOD_LABELS[period] || period;
@@ -1649,6 +1648,7 @@ async function loadStatsForPeriod(period) {
   } catch(e) {
     hideSyncBar();
     console.error('Stats period error:', e);
+    document.getElementById('stats-cards').innerHTML = `<div style="padding:20px;color:var(--red)">Error loading stats: ${escHtml(e.message)}</div>`;
   }
 }
 
