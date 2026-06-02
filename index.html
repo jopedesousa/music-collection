@@ -349,14 +349,14 @@ canvas { max-height: 220px !important; }
 .top-row:hover { background: var(--bg2); }
 .top-rank { font-size: 13px; font-weight: 700; color: var(--text4); width: 20px; text-align: right; flex-shrink: 0; }
 .top-art {
-  width: 40px; height: 40px; border-radius: 6px;
+  width: 60px; height: 60px; border-radius: 6px;
   object-fit: cover; background: var(--bg3); flex-shrink: 0;
 }
 .top-art-placeholder {
-  width: 40px; height: 40px; border-radius: 6px;
+  width: 60px; height: 60px; border-radius: 6px;
   background: linear-gradient(135deg, #2a2a25, #3d3d38);
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  font-size: 16px;
+  font-size: 20px;
 }
 .top-info { flex: 1; min-width: 0; }
 .top-name { font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -423,7 +423,7 @@ canvas { max-height: 220px !important; }
 .wrapped-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; opacity: .5; margin-bottom: 20px; }
 .wrapped-albums-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 20px;
 }
 .wrapped-album-card { cursor: pointer; }
@@ -586,7 +586,7 @@ canvas { max-height: 220px !important; }
 
 /* Nostalgia section */
 .nostalgia-grid {
-  display: grid; grid-template-columns: repeat(5,1fr); gap: 14px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px;
 }
 .nostalgia-card { cursor: pointer; }
 .nostalgia-cover {
@@ -1519,7 +1519,7 @@ function renderDiscoverSelection() {
       </div>
       <button class="btn-clear-selection" onclick="clearToListen()">Clear list</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:14px;margin-top:4px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-top:4px">
       ${Object.values(STATE.toListenItems).map(a => `
         <div style="cursor:pointer" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
           ${a.coverUrl ? `<img src="${escHtml(a.coverUrl)}" style="width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;display:block;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)" alt="">`
