@@ -560,7 +560,22 @@ canvas { max-height: 220px !important; }
   box-shadow: 0 2px 6px rgba(0,0,0,.3);
 }
 .selection-cover-thumb:first-child { margin-left: 0; }
-.btn-clear-selection {
+.toggle-switch {
+  display: inline-flex; align-items: center;
+  width: 44px; height: 24px; border-radius: 12px;
+  background: var(--border); cursor: pointer;
+  transition: background .2s; flex-shrink: 0; position: relative;
+}
+.toggle-switch.on { background: var(--text); }
+.toggle-knob {
+  position: absolute; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle-switch.on .toggle-knob { transform: translateX(20px); }
+
+
   background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.25);
   border-radius: var(--radius-sm); padding: 8px 14px;
   font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
@@ -684,20 +699,27 @@ canvas { max-height: 220px !important; }
   </div>
   <div class="setup-card">
     <div class="setup-title">Connect your data</div>
-    <div class="setup-desc">Enter your Last.fm username and optionally paste in your collection CSV from Google Sheets to get started.</div>
+    <div class="setup-desc">Your Last.fm username is pre-filled. Choose whether to load your collection, then click to continue.</div>
 
     <div class="field-group">
       <label class="field-label">Last.fm Username</label>
       <input class="field" id="input-username" type="text" placeholder="your username" value="asimplemind">
     </div>
 
-    <div class="field-group">
-      <label class="field-label">Google Sheets CSV URL <span style="font-weight:400;color:var(--text4)">(optional)</span></label>
-      <input class="field" id="input-csv-url" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
-      <div class="field-hint">In Google Sheets: File → Share → Publish to web → Comma-separated values → Publish. Paste that URL here.</div>
+    <div class="field-group" id="csv-toggle-row">
+      <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Load my collection</span>
+        <span class="toggle-switch" id="collection-toggle" onclick="toggleCollectionField()">
+          <span class="toggle-knob"></span>
+        </span>
+      </label>
+      <div id="csv-field-wrap" style="display:none;margin-top:10px">
+        <input class="field" id="input-csv-url" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
+        <div class="field-hint">Your Google Sheets "Publish to web" CSV URL.</div>
+      </div>
     </div>
 
-    <button class="btn-primary" onclick="initDashboard()">Load Dashboard →</button>
+    <button class="btn-primary" onclick="initDashboard()">Open Dashboard →</button>
     <div id="setup-error"></div>
   </div>
 </div>
@@ -847,7 +869,7 @@ canvas { max-height: 220px !important; }
     <div class="page" id="page-gaps">
       <div class="page-header">
         <div class="page-title">Discover</div>
-        <div class="page-subtitle">Rediscover your collection · find your gaps</div>
+        <div class="page-subtitle">Rediscover your collection</div>
       </div>
       <div id="gaps-content">
         <div class="page-loading"><div class="load-spinner"></div><div class="load-text">Analysing your collection…</div></div>
@@ -1089,8 +1111,9 @@ async function initDashboard() {
     if (!userInfo.user) throw new Error('No user data returned');
     STATE.userInfo = userInfo.user;
 
-    // Load collection from Google Sheets URL if provided
-    const csvUrl = document.getElementById('input-csv-url').value.trim();
+    // Load collection if toggle is on
+    const collectionOn = document.getElementById('collection-toggle').classList.contains('on');
+    const csvUrl = collectionOn ? document.getElementById('input-csv-url').value.trim() : '';
     if (csvUrl) {
       try {
         const csvText = await fetchCSV(csvUrl);
@@ -1119,6 +1142,14 @@ async function initDashboard() {
     showSetupError(`Could not connect to Last.fm: ${e.message || 'Unknown error'}. Check your username and try again.`);
     console.error(e);
   }
+}
+
+function toggleCollectionField() {
+  const tog = document.getElementById('collection-toggle');
+  const wrap = document.getElementById('csv-field-wrap');
+  const isOn = tog.classList.toggle('on');
+  wrap.style.display = isOn ? 'block' : 'none';
+  localStorage.setItem('vinyl_collection_toggle', isOn ? 'on' : 'off');
 }
 
 function showSetupError(msg) {
@@ -1423,13 +1454,18 @@ function filterCollection() {
 }
 
 function toggleToListen(key, uid, coverUrl) {
+  // Try to get the most up-to-date cover URL from the DOM image if arg is empty
+  if (!coverUrl) {
+    const imgEl = document.getElementById(uid+'-img');
+    if (imgEl?.src) coverUrl = imgEl.src;
+  }
   if (STATE.toListenSet.has(key)) {
     STATE.toListenSet.delete(key);
     delete STATE.toListenItems[key];
   } else {
     const [artist, album] = key.split('::');
     STATE.toListenSet.add(key);
-    STATE.toListenItems[key] = { artist, album, coverUrl };
+    STATE.toListenItems[key] = { artist, album, coverUrl: coverUrl || '' };
   }
   // Update the card checkbox in collection
   const cb   = document.getElementById(uid+'-cb');
@@ -1438,6 +1474,12 @@ function toggleToListen(key, uid, coverUrl) {
   if (card) card.classList.toggle('selected', STATE.toListenSet.has(key));
   // Persist to localStorage
   try { localStorage.setItem('vinyl_tolisten', JSON.stringify([...STATE.toListenSet])); } catch(e) {}
+  // Persist cover URLs separately
+  try {
+    const covers = {};
+    for (const [k,v] of Object.entries(STATE.toListenItems)) covers[k] = v.coverUrl || '';
+    localStorage.setItem('vinyl_tolisten_covers', JSON.stringify(covers));
+  } catch(e) {}
   // Refresh Discover if open
   if (STATE.currentPage === 'gaps') renderDiscoverSelection();
 }
@@ -1445,7 +1487,7 @@ function toggleToListen(key, uid, coverUrl) {
 function clearToListen() {
   STATE.toListenSet.clear();
   STATE.toListenItems = {};
-  try { localStorage.removeItem('vinyl_tolisten'); } catch(e) {}
+  try { localStorage.removeItem('vinyl_tolisten'); localStorage.removeItem('vinyl_tolisten_covers'); } catch(e) {}
   // Refresh checkboxes in collection if open
   document.querySelectorAll('.album-select-cb').forEach(cb => cb.classList.remove('checked'));
   document.querySelectorAll('.album-card').forEach(c => c.classList.remove('selected'));
@@ -2129,8 +2171,11 @@ async function loadThisWeek() {
 
 function buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums) {
   function albumRow(a) {
+    const img = a.coverUrl || '';
     return `<div class="top-row gaps-filterable" data-format="${escHtml(a.format||'')}">
-      <div class="top-art-placeholder">💿</div>
+      ${img
+        ? `<img class="top-art" src="${escHtml(img)}" alt="" onerror="this.style.display='none'">`
+        : `<div class="top-art-placeholder">💿</div>`}
       <div class="top-info">
         <div class="top-name">${escHtml(a.album||'')}</div>
         <div class="top-sub">${escHtml(a.artist||'')} · ${a.year||''}
@@ -2140,8 +2185,11 @@ function buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums) {
     </div>`;
   }
   function rareRow(a) {
+    const img = a.coverUrl || '';
     return `<div class="top-row gaps-filterable" data-format="${escHtml(a.format||'')}">
-      <div class="top-art-placeholder">💿</div>
+      ${img
+        ? `<img class="top-art" src="${escHtml(img)}" alt="" onerror="this.style.display='none'">`
+        : `<div class="top-art-placeholder">💿</div>`}
       <div class="top-info">
         <div class="top-name">${escHtml(a.album||'')}</div>
         <div class="top-sub">${escHtml(a.artist||'')}</div>
@@ -2150,63 +2198,89 @@ function buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums) {
     </div>`;
   }
 
-  // Format filter
-  const filterHtml = `
-    <div class="collection-controls" style="margin-bottom:20px">
-      <select class="filter-select" id="gaps-filter-format" onchange="filterGaps()">
-        <option value="">All formats</option>
-        <option value="CD">CD</option>
-        <option value="mp3">MP3</option>
-        <option value="Spotify">Spotify</option>
-      </select>
-      <span style="font-size:12px;color:var(--text3);align-self:center">Filter owned sections</span>
-    </div>`;
+  const formatFilter = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <select class="filter-select" id="gaps-filter-format" onchange="filterGaps()" style="font-size:12px;padding:5px 10px">
+      <option value="">All formats</option>
+      <option value="CD">CD</option>
+      <option value="mp3">MP3</option>
+      <option value="Spotify">Spotify</option>
+    </select>
+    <span style="font-size:12px;color:var(--text4)">Filter by format</span>
+  </div>`;
 
   return `
-    ${filterHtml}
-
     <!-- 1. My Current Selection -->
     <div class="discover-card" style="margin-bottom:20px">
-      <div class="discover-card-title">My current selection</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+        <div class="discover-card-title">My current selection</div>
+      </div>
       <div class="discover-card-sub">Albums you've flagged from your collection to listen to next</div>
       <div id="discover-selection"></div>
     </div>
 
     <!-- 2. Nostalgia -->
     <div class="discover-card" style="margin-bottom:20px">
-      <div class="discover-card-title">Nostalgia</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+        <div class="discover-card-title">Nostalgia</div>
+        <button class="btn-sm" onclick="refreshNostalgia()" style="font-size:11px;padding:4px 10px">More ↻</button>
+      </div>
       <div class="discover-card-sub">Albums you used to love but haven't listened to in years</div>
-      <div class="nostalgia-grid">
-        ${nostalgiaAlbums.length === 0
-          ? '<div style="color:var(--text4);font-size:13px;padding:8px 0">Not enough historical data yet to suggest nostalgia picks.</div>'
-          : nostalgiaAlbums.map(a => {
-              const img = a.coverUrl || '';
-              return `<div class="nostalgia-card" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
-                ${img ? `<img class="nostalgia-cover" src="${escHtml(img)}" alt="">` : `<div class="nostalgia-cover-placeholder">💿</div>`}
-                <div class="nostalgia-name">${escHtml(a.album||'')}</div>
-                <div class="nostalgia-artist">${escHtml(a.artist||'')}</div>
-              </div>`;
-            }).join('')}
+      <div class="nostalgia-grid" id="nostalgia-grid">
+        ${renderNostalgiaItems(nostalgiaAlbums)}
       </div>
     </div>
 
-    <!-- 3 & 4: Owned sections -->
+    <!-- 3 & 4: Owned sections with per-section format filter -->
     <div class="discover-grid">
-      <div class="discover-card gaps-card">
+      <div class="discover-card gaps-card" id="gaps-card-unplayed">
         <div class="discover-card-title">Owned but never played <span class="gaps-section-count">${unplayed.length}</span></div>
         <div class="discover-card-sub">Albums in your collection with 0 Last.fm scrobbles</div>
+        ${formatFilter}
         <div class="top-list">${unplayed.slice(0,30).map(albumRow).join('')}</div>
       </div>
-      <div class="discover-card gaps-card">
+      <div class="discover-card gaps-card" id="gaps-card-rarely">
         <div class="discover-card-title">Rarely played <span class="gaps-section-count">${rarelyPlayed.length}</span></div>
         <div class="discover-card-sub">Albums you own with very few plays</div>
+        ${formatFilter.replace('gaps-filter-format', 'gaps-filter-format-2').replace('filterGaps()', 'filterGaps()')}
         <div class="top-list">${rarelyPlayed.slice(0,30).map(rareRow).join('')}</div>
       </div>
     </div>`;
 }
 
+let _nostalgiaPool = []; // full pool, shuffle gives new 5
+
+function renderNostalgiaItems(items) {
+  if (!items.length) return '<div style="color:var(--text4);font-size:13px;padding:8px 0">Not enough historical data yet.</div>';
+  return items.map(a => {
+    const img = a.coverUrl || '';
+    return `<div class="nostalgia-card" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
+      ${img
+        ? `<img class="nostalgia-cover" src="${escHtml(img)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : ''}
+      <div class="nostalgia-cover-placeholder" ${img ? 'style="display:none"' : ''}>💿</div>
+      <div class="nostalgia-name">${escHtml(a.album||'')}</div>
+      <div class="nostalgia-artist">${escHtml(a.artist||'')}</div>
+    </div>`;
+  }).join('');
+}
+
+function refreshNostalgia() {
+  if (!_nostalgiaPool.length) return;
+  // Pick 5 different ones from the pool (cycle through)
+  const shuffled = [..._nostalgiaPool].sort(() => Math.random() - 0.5).slice(0, 5);
+  const el = document.getElementById('nostalgia-grid');
+  if (el) el.innerHTML = renderNostalgiaItems(shuffled);
+}
+
 function filterGaps() {
-  const fmt = (document.getElementById('gaps-filter-format')?.value || '').toLowerCase();
+  // Both format dropdowns sync together
+  const fmt1 = (document.getElementById('gaps-filter-format')?.value   || '').toLowerCase();
+  const fmt2 = (document.getElementById('gaps-filter-format-2')?.value || '').toLowerCase();
+  const fmt = fmt1 || fmt2;
+  // Sync both selects
+  if (document.getElementById('gaps-filter-format'))   document.getElementById('gaps-filter-format').value   = fmt;
+  if (document.getElementById('gaps-filter-format-2')) document.getElementById('gaps-filter-format-2').value = fmt;
+
   document.querySelectorAll('.gaps-filterable').forEach(row => {
     const rowFmt = (row.dataset.format || '').toLowerCase();
     row.style.display = (!fmt || rowFmt === fmt) ? '' : 'none';
@@ -2243,29 +2317,37 @@ async function loadGaps() {
     const rarelyPlayed = withPlays.slice(0, Math.ceil(withPlays.length * 0.2));
 
     // 3. Nostalgia: albums with high all-time plays but low recent-year plays
-    //    Use STATE.topAlbumsAllTime (all time plays) vs STATE.topAlbums52w (last year plays)
     const recent52wMap = {};
     for (const a of STATE.topAlbums52w) {
       recent52wMap[albumKey(a)] = parseInt(a.playcount||0);
     }
-    const nostalgiaPool = STATE.topAlbumsAllTime
-      .filter(a => {
-        const allTimePlays  = parseInt(a.playcount||0);
-        const recentPlays   = recent52wMap[albumKey(a)] || 0;
-        const ratio = allTimePlays > 0 ? recentPlays / allTimePlays : 1;
-        // Must have decent all-time plays, but almost nothing recent
-        return allTimePlays >= 20 && ratio < 0.05;
-      })
-      .sort(() => Math.random() - 0.5)  // shuffle
-      .slice(0, 5);
+    _nostalgiaPool = await Promise.all(
+      STATE.topAlbumsAllTime
+        .filter(a => {
+          const allTimePlays = parseInt(a.playcount||0);
+          const recentPlays  = recent52wMap[albumKey(a)] || 0;
+          const ratio = allTimePlays > 0 ? recentPlays / allTimePlays : 1;
+          return allTimePlays >= 20 && ratio < 0.05;
+        })
+        .map(async a => {
+          const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text']
+                   || await fetchCoverArt(a.artist?.name||a.artist||'', a.name||'');
+          return { artist: a.artist?.name||a.artist||'', album: a.name||'', coverUrl: img||'' };
+        })
+    );
+    const nostalgiaAlbums = [..._nostalgiaPool].sort(() => Math.random() - 0.5).slice(0, 5);
 
-    // Fetch cover art for nostalgia picks
-    const nostalgiaAlbums = await Promise.all(nostalgiaPool.map(async a => {
-      const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text'] || '';
-      return { artist: a.artist?.name||a.artist||'', album: a.name||'', coverUrl: img };
-    }));
+    // Fetch covers for unplayed/rarely played rows (using Last.fm album.getinfo)
+    const coverFetch = async (a) => {
+      const url = await fetchCoverArt(a.artist||'', a.album||'');
+      return { ...a, coverUrl: url || '' };
+    };
+    const [unplayedWithCovers, rareWithCovers] = await Promise.all([
+      Promise.all(unplayed.slice(0,30).map(coverFetch)),
+      Promise.all(rarelyPlayed.slice(0,30).map(coverFetch)),
+    ]);
 
-    document.getElementById('gaps-content').innerHTML = buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums);
+    document.getElementById('gaps-content').innerHTML = buildDiscoverGapsHTML(unplayedWithCovers, rareWithCovers, nostalgiaAlbums);
     renderDiscoverSelection();
     filterGaps();
   } catch(e) {
@@ -2289,23 +2371,31 @@ window.addEventListener('DOMContentLoaded', () => {
   // Restore To Listen list
   try {
     const saved = localStorage.getItem('vinyl_tolisten');
+    const savedCovers = JSON.parse(localStorage.getItem('vinyl_tolisten_covers') || '{}');
     if (saved) {
       const keys = JSON.parse(saved);
       keys.forEach(k => {
         STATE.toListenSet.add(k);
         const [artist, album] = k.split('::');
-        STATE.toListenItems[k] = { artist, album, coverUrl: '' };
+        STATE.toListenItems[k] = { artist, album, coverUrl: savedCovers[k] || '' };
       });
     }
   } catch(e) {}
 
-  const savedUser = localStorage.getItem('vinyl_username');
-  const savedCsvUrl = localStorage.getItem('vinyl_csv_url');
-  if (savedUser) {
-    document.getElementById('input-username').value = savedUser;
-    if (savedCsvUrl) document.getElementById('input-csv-url').value = savedCsvUrl;
-    initDashboard();
+  const savedUser   = localStorage.getItem('vinyl_username') || 'asimplemind';
+  const savedCsvUrl = localStorage.getItem('vinyl_csv_url')
+    || 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT7aSH-notHa5iXMXFFhERQcWzx8RwXPs3Um6OL3TGLV6AnhnxdWHTckz4kEGYctqAcGm1TIba6wuLK/pub?output=csv';
+
+  document.getElementById('input-username').value = savedUser;
+  document.getElementById('input-csv-url').value  = savedCsvUrl;
+
+  // Restore collection toggle state (default ON if we have a URL)
+  const collectionOn = localStorage.getItem('vinyl_collection_toggle') !== 'off';
+  if (collectionOn) {
+    document.getElementById('collection-toggle').classList.add('on');
+    document.getElementById('csv-field-wrap').style.display = 'block';
   }
+  // Always show setup screen — user must click the button
 });
 </script>
 </body>
