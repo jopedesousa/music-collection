@@ -366,75 +366,241 @@ canvas { max-height: 220px !important; }
 .top-bar-fill { height: 100%; background: var(--accent2); border-radius: 2px; }
 
 /* ─── WRAPPED PAGE ─── */
-#page-wrapped { transition: background .6s, color .6s; }
-.wrapped-year-row {
-  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 36px;
+#page-wrapped { transition: background-color .8s ease, color .8s ease; }
+.wrapped-year-select-wrap { margin-bottom: 32px; }
+.wrapped-year-select {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 16px;
+  font-family: inherit; font-size: 15px; font-weight: 600; color: var(--text);
+  outline: none; cursor: pointer; min-width: 140px;
+  transition: border-color .15s;
 }
-.year-chip {
-  padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
-  cursor: pointer; border: 1.5px solid var(--border);
-  background: var(--surface); color: var(--text3);
-  transition: all .2s; font-family: inherit;
-}
-.year-chip:hover { border-color: var(--accent2); color: var(--text); }
-.year-chip.active { background: var(--text); color: #fff; border-color: var(--text); }
+.wrapped-year-select:focus { border-color: var(--accent2); }
 
-.wrapped-content { display: none; }
-.wrapped-content.active { display: block; }
+/* Full-page tint — applied to #page-wrapped via JS */
+.wrapped-tinted { border-radius: 20px; padding: 0 0 40px; transition: background-color .8s; }
 
-.wrapped-hero {
-  border-radius: 20px; padding: 40px; margin-bottom: 28px;
+/* Wrapped hero — big cover + stats */
+.wrapped-hero-new {
+  display: grid; grid-template-columns: 340px 1fr; gap: 48px;
+  align-items: center; padding: 48px 48px 40px;
+  border-radius: 20px 20px 0 0;
   position: relative; overflow: hidden;
-  transition: background .6s;
+  min-height: 380px;
 }
-.wrapped-hero-year {
+.wrapped-hero-bg-year {
   font-family: 'DM Serif Display', serif;
-  font-size: 80px; font-weight: 400; line-height: 1;
-  opacity: .12; position: absolute; bottom: -10px; right: 20px;
-  pointer-events: none;
+  font-size: 300px; font-weight: 400; line-height: 1;
+  opacity: .06; position: absolute; bottom: -60px; right: -20px;
+  pointer-events: none; white-space: nowrap;
 }
-.wrapped-hero-title {
+.wrapped-cover-hero {
+  width: 280px; height: 280px; border-radius: 12px; object-fit: cover;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  flex-shrink: 0; display: block;
+}
+.wrapped-cover-hero-placeholder {
+  width: 280px; height: 280px; border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 64px; flex-shrink: 0;
+}
+.wrapped-hero-text { position: relative; z-index: 1; }
+.wrapped-hero-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; opacity: .5; margin-bottom: 10px; }
+.wrapped-hero-year-title {
   font-family: 'DM Serif Display', serif;
-  font-size: 32px; margin-bottom: 6px;
+  font-size: 72px; font-weight: 400; line-height: .95; margin-bottom: 20px; letter-spacing: -2px;
 }
-.wrapped-hero-sub { font-size: 14px; opacity: .7; margin-bottom: 24px; }
-.wrapped-kpis { display: flex; gap: 32px; flex-wrap: wrap; }
-.wrapped-kpi-val { font-size: 36px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
-.wrapped-kpi-label { font-size: 11px; opacity: .65; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
+.wrapped-hero-top-album { font-size: 22px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; }
+.wrapped-hero-top-artist { font-size: 16px; opacity: .65; margin-bottom: 28px; }
+.wrapped-hero-kpis { display: flex; gap: 36px; flex-wrap: wrap; }
+.wrapped-kpi-val { font-size: 32px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
+.wrapped-kpi-label { font-size: 10px; opacity: .55; text-transform: uppercase; letter-spacing: 1.2px; margin-top: 3px; }
 
-.wrapped-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-.wrapped-card {
-  background: var(--surface); border-radius: var(--radius); padding: 24px;
-  border: 1px solid var(--border);
+/* Albums grid — hero #1 + smaller below */
+.wrapped-albums-section { padding: 0 48px 40px; }
+.wrapped-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; opacity: .5; margin-bottom: 20px; }
+.wrapped-albums-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 20px;
 }
-.wrapped-card-title { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 16px; }
+.wrapped-album-card { cursor: pointer; }
+.wrapped-album-card:hover .wrapped-album-cover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+.wrapped-album-cover {
+  width: 100%; aspect-ratio: 1; border-radius: 8px; object-fit: cover;
+  display: block; margin-bottom: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  transition: transform .25s, box-shadow .25s;
+  background: rgba(255,255,255,.06);
+}
+.wrapped-album-cover-placeholder {
+  width: 100%; aspect-ratio: 1; border-radius: 8px;
+  background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; margin-bottom: 10px;
+}
+.wrapped-album-rank { font-size: 10px; font-weight: 700; opacity: .4; margin-bottom: 2px; }
+.wrapped-album-name { font-size: 13px; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrapped-album-artist { font-size: 11px; opacity: .6; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrapped-album-plays { font-size: 11px; opacity: .5; margin-top: 2px; }
+
+/* Artists section */
+.wrapped-artists-section { padding: 0 48px 48px; }
+.wrapped-artists-list { display: flex; flex-direction: column; gap: 2px; }
+.wrapped-artist-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px; border-radius: 8px;
+  transition: background .15s; cursor: default;
+}
+.wrapped-artist-row:hover { background: rgba(255,255,255,.07); }
+.wrapped-artist-rank { font-size: 13px; font-weight: 700; opacity: .35; width: 22px; text-align: right; flex-shrink: 0; }
+.wrapped-artist-img {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  background: rgba(255,255,255,.08); flex-shrink: 0;
+}
+.wrapped-artist-img-placeholder {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.wrapped-artist-name { flex: 1; font-size: 14px; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrapped-artist-plays { font-size: 13px; font-weight: 600; opacity: .7; flex-shrink: 0; }
+
+/* First / last scrobble */
+.wrapped-scrobbles-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 48px 48px; }
+.wrapped-scrobble-card {
+  background: rgba(255,255,255,.07); border-radius: 12px; padding: 18px;
+}
+.wrapped-scrobble-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; opacity: .5; margin-bottom: 10px; }
+.wrapped-scrobble-track { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.wrapped-scrobble-sub { font-size: 12px; opacity: .6; margin-top: 3px; }
 
 /* ─── THIS WEEK PAGE ─── */
-.week-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-.week-card {
-  background: var(--surface); border-radius: var(--radius); padding: 24px;
-  border: 1px solid var(--border);
+.week-carousel-wrap {
+  position: relative; overflow: hidden;
+  border-radius: 20px; margin-bottom: 28px;
+  height: 340px;
 }
-.week-card-title { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 16px; }
-.daily-bar-wrap { display: flex; gap: 8px; align-items: flex-end; height: 80px; margin-top: 8px; }
-.daily-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.daily-bar-fill { width: 100%; border-radius: 3px 3px 0 0; background: var(--accent2); min-height: 2px; transition: height .3s; }
-.daily-bar-lbl { font-size: 10px; color: var(--text4); }
-.daily-bar-val { font-size: 9px; color: var(--text3); font-weight: 600; }
+.week-carousel-slide {
+  position: absolute; inset: 0;
+  display: flex; align-items: flex-end;
+  opacity: 0; transition: opacity .7s ease;
+  pointer-events: none;
+}
+.week-carousel-slide.active { opacity: 1; pointer-events: auto; }
+.week-carousel-bg {
+  position: absolute; inset: 0; background-size: cover; background-position: center;
+  filter: blur(28px) brightness(.55); transform: scale(1.1);
+}
+.week-carousel-cover {
+  position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 200px; border-radius: 12px; object-fit: cover;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.week-carousel-cover-placeholder {
+  position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 200px; border-radius: 12px;
+  background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center;
+  font-size: 64px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.week-carousel-info {
+  position: relative; z-index: 1; width: 100%; padding: 20px 28px;
+  color: #fff; text-align: center;
+  background: linear-gradient(transparent, rgba(0,0,0,.6));
+}
+.week-carousel-rank { font-size: 11px; font-weight: 600; opacity: .6; text-transform: uppercase; letter-spacing: 1.5px; }
+.week-carousel-album { font-size: 20px; font-weight: 700; margin: 4px 0 2px; line-height: 1.2; }
+.week-carousel-artist { font-size: 14px; opacity: .75; margin-bottom: 8px; }
+.week-carousel-plays { font-size: 13px; opacity: .6; }
+.week-carousel-dots {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 5px; z-index: 2;
+}
+.week-carousel-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,.4); transition: all .3s; cursor: pointer;
+}
+.week-carousel-dot.active { background: #fff; width: 18px; border-radius: 3px; }
 
-/* ─── GAPS PAGE ─── */
-.gaps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.gaps-card {
+.week-stats-row {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 24px;
+}
+
+/* ─── DISCOVER / GAPS PAGE ─── */
+.discover-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.discover-card {
   background: var(--surface); border-radius: var(--radius); padding: 24px;
   border: 1px solid var(--border);
 }
-.gaps-card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.discover-card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .gaps-section-count {
   display: inline-block; background: var(--bg3); color: var(--text3);
   border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 600;
   margin-left: 6px; vertical-align: middle;
 }
-.gaps-card-sub { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+.discover-card-sub { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+
+/* My Current Selection banner */
+.selection-banner {
+  background: var(--text); color: #fff; border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap;
+}
+.selection-banner-left { display: flex; align-items: center; gap: 12px; }
+.selection-banner-count {
+  font-size: 28px; font-weight: 700; letter-spacing: -1px; line-height: 1;
+}
+.selection-banner-label { font-size: 13px; opacity: .65; margin-top: 2px; }
+.selection-covers { display: flex; gap: -4px; }
+.selection-cover-thumb {
+  width: 36px; height: 36px; border-radius: 5px; object-fit: cover;
+  margin-left: -6px; border: 2px solid var(--text);
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+}
+.selection-cover-thumb:first-child { margin-left: 0; }
+.btn-clear-selection {
+  background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: var(--radius-sm); padding: 8px 14px;
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.btn-clear-selection:hover { background: rgba(255,255,255,.25); }
+
+/* Nostalgia section */
+.nostalgia-grid {
+  display: grid; grid-template-columns: repeat(5,1fr); gap: 14px;
+}
+.nostalgia-card { cursor: pointer; }
+.nostalgia-cover {
+  width: 100%; aspect-ratio: 1; border-radius: 8px; object-fit: cover;
+  display: block; margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+.nostalgia-cover-placeholder {
+  width: 100%; aspect-ratio: 1; border-radius: 8px;
+  background: linear-gradient(135deg, #2a2a25, #3d3d38);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin-bottom: 8px;
+}
+.nostalgia-name { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nostalgia-artist { font-size: 11px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* To Listen checkbox on album cards */
+.album-card { position: relative; }
+.album-select-cb {
+  position: absolute; top: 8px; right: 8px;
+  width: 22px; height: 22px; border-radius: 6px;
+  background: rgba(255,255,255,.92); border: 2px solid var(--border);
+  display: none; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 2; transition: all .15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
+.album-card:hover .album-select-cb { display: flex; }
+.album-select-cb.checked { display: flex; background: var(--text); border-color: var(--text); color: #fff; }
+.album-select-cb.checked::after { content: '✓'; font-size: 12px; font-weight: 700; }
+.album-card.selected .album-select-cb { display: flex; }
 
 /* ─── STATS PERIOD FILTER ─── */
 .stats-period-row {
@@ -543,10 +709,10 @@ canvas { max-height: 220px !important; }
     <div class="top-nav">
       <button class="nav-btn active" data-page="home" onclick="navigate('home')">Home</button>
       <button class="nav-btn" data-page="thisweek" onclick="navigate('thisweek')">This Week</button>
-      <button class="nav-btn" data-page="collection" onclick="navigate('collection')">Collection</button>
+      <button class="nav-btn" data-page="collection" onclick="navigate('collection')">My Collection</button>
       <button class="nav-btn" data-page="stats" onclick="navigate('stats')">Stats</button>
       <button class="nav-btn" data-page="wrapped" onclick="navigate('wrapped')">Wrapped</button>
-      <button class="nav-btn" data-page="gaps" onclick="navigate('gaps')">Gaps</button>
+      <button class="nav-btn" data-page="gaps" onclick="navigate('gaps')">Discover</button>
     </div>
     <div class="top-right" style="display:flex;align-items:center;gap:8px">
       <button class="nav-btn" onclick="refreshCurrentPage()" title="Refresh this page's data" style="font-size:11px;padding:5px 10px">↻ Refresh</button>
@@ -597,7 +763,7 @@ canvas { max-height: 220px !important; }
     <!-- COLLECTION PAGE -->
     <div class="page" id="page-collection">
       <div class="page-header">
-        <div class="page-title">Collection</div>
+        <div class="page-title">My Collection</div>
         <div class="page-subtitle" id="collection-subtitle">Your full album library</div>
       </div>
       <div class="collection-controls">
@@ -615,13 +781,14 @@ canvas { max-height: 220px !important; }
           <option value="">All decades</option>
         </select>
         <select class="filter-select" id="filter-sort" onchange="filterCollection()">
-          <option value="plays">Sort: Most played</option>
-          <option value="rating">Sort: My rating</option>
-          <option value="artist_year">Sort: Artist then year</option>
-          <option value="artist">Sort: Artist A–Z</option>
-          <option value="year">Sort: Year (newest)</option>
-          <option value="year_asc">Sort: Year (oldest)</option>
+          <option value="album">Album</option>
+          <option value="artist_album">Artist / Album</option>
+          <option value="artist_year_album">Artist / Year / Album</option>
+          <option value="year">Year</option>
+          <option value="plays">Most Played</option>
+          <option value="rating">My Rating</option>
         </select>
+        <button class="btn-sm" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle sort direction" style="padding:8px 12px;font-size:13px;min-width:36px">↑</button>
       </div>
       <div class="collection-count" id="collection-count"></div>
       <div class="collection-grid" id="collection-grid"></div>
@@ -641,29 +808,27 @@ canvas { max-height: 220px !important; }
         <button class="period-btn" data-period="7day" onclick="setStatsPeriod('7day')">Last 7 days</button>
       </div>
       <div class="stats-grid" id="stats-cards"></div>
-      <div class="chart-card" id="yearly-chart-card">
-        <div class="chart-header"><div class="chart-title">Scrobbles per year</div><div class="chart-meta" id="stats-years-range"></div></div>
-        <canvas id="chart-yearly"></canvas>
-      </div>
-      <div class="charts-2col">
+      <div class="charts-2col" style="margin-top:24px">
         <div class="chart-card" style="margin-bottom:0">
           <div class="chart-header"><div class="chart-title">Top artists</div><div class="chart-meta" id="top-artists-period-label">all time</div></div>
           <div class="top-list" id="top-artists-list"></div>
         </div>
         <div class="chart-card" style="margin-bottom:0">
           <div class="chart-header"><div class="chart-title">Top albums</div><div class="chart-meta" id="top-albums-period-label">all time</div></div>
-          <div class="top-list" id="top-albums-list"></div>
+          <div class="collection-grid" id="top-albums-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-top:4px"></div>
         </div>
       </div>
     </div>
 
     <!-- WRAPPED PAGE -->
     <div class="page" id="page-wrapped">
-      <div class="page-header">
-        <div class="page-title">Wrapped</div>
-        <div class="page-subtitle">A year-by-year portrait of your listening</div>
+      <div class="page-header" style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div class="page-title">Wrapped</div>
+          <div class="page-subtitle">A year-by-year portrait of your listening</div>
+        </div>
+        <select class="wrapped-year-select" id="wrapped-year-select" onchange="loadWrappedYear(parseInt(this.value))"></select>
       </div>
-      <div class="wrapped-year-row" id="wrapped-year-row"></div>
       <div id="wrapped-panels"></div>
     </div>
 
@@ -678,19 +843,11 @@ canvas { max-height: 220px !important; }
       </div>
     </div>
 
-    <!-- GAPS PAGE -->
+    <!-- DISCOVER PAGE -->
     <div class="page" id="page-gaps">
       <div class="page-header">
-        <div class="page-title">Gaps</div>
-        <div class="page-subtitle">Albums you own but rarely play · Artists you love but don't own</div>
-      </div>
-      <div class="collection-controls" style="margin-bottom:20px">
-        <select class="filter-select" id="gaps-filter-format" onchange="filterGaps()">
-          <option value="">All formats</option>
-          <option value="CD">CD</option>
-          <option value="mp3">MP3</option>
-          <option value="Spotify">Spotify</option>
-        </select>
+        <div class="page-title">Discover</div>
+        <div class="page-subtitle">Rediscover your collection · find your gaps</div>
       </div>
       <div id="gaps-content">
         <div class="page-loading"><div class="load-spinner"></div><div class="load-text">Analysing your collection…</div></div>
@@ -706,7 +863,7 @@ canvas { max-height: 220px !important; }
     <button class="mobile-nav-btn" data-page="collection" onclick="navigate('collection')"><span class="mobile-nav-icon">📦</span>Collection</button>
     <button class="mobile-nav-btn" data-page="stats" onclick="navigate('stats')"><span class="mobile-nav-icon">📊</span>Stats</button>
     <button class="mobile-nav-btn" data-page="wrapped" onclick="navigate('wrapped')"><span class="mobile-nav-icon">🎁</span>Wrapped</button>
-    <button class="mobile-nav-btn" data-page="gaps" onclick="navigate('gaps')"><span class="mobile-nav-icon">🕳️</span>Gaps</button>
+    <button class="mobile-nav-btn" data-page="gaps" onclick="navigate('gaps')"><span class="mobile-nav-icon">🔍</span>Discover</button>
   </div>
 </div>
 
@@ -737,6 +894,8 @@ let STATE = {
   wrappedLoaded: false,
   weekLoaded: false,
   gapsLoaded: false,
+  toListenSet: new Set(),    // keys of albums in To Listen list
+  toListenItems: {},         // key -> { artist, album, coverUrl } for display
 };
 
 /* ══════════════════════════════════════════════
@@ -997,9 +1156,6 @@ function refreshCurrentPage() {
     loadHomeData();
   } else if (p === 'stats') {
     STATE.statsLoaded = false;
-    STATE._yearlyChartInit = false;
-    const chart = Chart.getChart('chart-yearly');
-    if (chart) chart.destroy();
     loadStats();
   } else if (p === 'wrapped') {
     // Only clear current year cache (past years are permanent)
@@ -1025,9 +1181,6 @@ function clearAllCache() {
   STATE.gapsLoaded = false;
   STATE.wrappedCache = {};
   STATE.yearlyScrobbles = {};
-  STATE._yearlyChartInit = false;
-  const chart = Chart.getChart('chart-yearly');
-  if (chart) chart.destroy();
   alert('Cache cleared. Refresh the page to reload everything.');
 }
 
@@ -1224,6 +1377,15 @@ function lookupPlays(artist, album, map) {
   return map[k] || 0;
 }
 
+let SORT_ASC = true;
+
+function toggleSortDir() {
+  SORT_ASC = !SORT_ASC;
+  const btn = document.getElementById('sort-dir-btn');
+  if (btn) btn.textContent = SORT_ASC ? '↑' : '↓';
+  filterCollection();
+}
+
 function filterCollection() {
   const q = document.getElementById('collection-search').value.toLowerCase();
   const fmt = document.getElementById('filter-format').value;
@@ -1239,21 +1401,91 @@ function filterCollection() {
   if (fmt) items = items.filter(a => (a.format||'').toLowerCase() === fmt.toLowerCase());
   if (dec) items = items.filter(a => Math.floor((parseInt(a.year)||0)/10)*10 === parseInt(dec));
 
-  if (sort === 'plays') items = items.sort((a,b) => b.plays - a.plays);
-  else if (sort === 'rating') items = items.sort((a,b) => (parseFloat(b.my_rating||0)) - (parseFloat(a.my_rating||0)));
-  else if (sort === 'artist_year') items = items.sort((a,b) => {
+  const dir = SORT_ASC ? 1 : -1;
+  if (sort === 'album') items = items.slice().sort((a,b) => dir * (a.album||'').localeCompare(b.album||''));
+  else if (sort === 'artist_album') items = items.slice().sort((a,b) => {
     const ac = (a.artist||'').localeCompare(b.artist||'');
-    return ac !== 0 ? ac : (parseInt(a.year)||0) - (parseInt(b.year)||0);
+    return dir * (ac !== 0 ? ac : (a.album||'').localeCompare(b.album||''));
   });
-  else if (sort === 'artist') items = items.sort((a,b) => (a.artist||'').localeCompare(b.artist||''));
-  else if (sort === 'year') items = items.sort((a,b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
-  else if (sort === 'year_asc') items = items.sort((a,b) => (parseInt(a.year)||0) - (parseInt(b.year)||0));
+  else if (sort === 'artist_year_album') items = items.slice().sort((a,b) => {
+    const ac = (a.artist||'').localeCompare(b.artist||'');
+    if (ac !== 0) return dir * ac;
+    const yc = (parseInt(a.year)||0) - (parseInt(b.year)||0);
+    if (yc !== 0) return dir * yc;
+    return dir * (a.album||'').localeCompare(b.album||'');
+  });
+  else if (sort === 'year') items = items.slice().sort((a,b) => dir * ((parseInt(b.year)||0) - (parseInt(a.year)||0)));
+  else if (sort === 'plays') items = items.slice().sort((a,b) => dir * (b.plays - a.plays));
+  else if (sort === 'rating') items = items.slice().sort((a,b) => dir * ((parseFloat(b.my_rating||0)) - (parseFloat(a.my_rating||0))));
 
   document.getElementById('collection-count').textContent = `${items.length} album${items.length !== 1 ? 's' : ''}`;
   renderCollectionWithCovers(items);
 }
 
-/* ─── COVER ART CACHE ─── */
+function toggleToListen(key, uid, coverUrl) {
+  if (STATE.toListenSet.has(key)) {
+    STATE.toListenSet.delete(key);
+    delete STATE.toListenItems[key];
+  } else {
+    const [artist, album] = key.split('::');
+    STATE.toListenSet.add(key);
+    STATE.toListenItems[key] = { artist, album, coverUrl };
+  }
+  // Update the card checkbox in collection
+  const cb   = document.getElementById(uid+'-cb');
+  const card = document.getElementById(uid+'-card');
+  if (cb)   cb.classList.toggle('checked', STATE.toListenSet.has(key));
+  if (card) card.classList.toggle('selected', STATE.toListenSet.has(key));
+  // Persist to localStorage
+  try { localStorage.setItem('vinyl_tolisten', JSON.stringify([...STATE.toListenSet])); } catch(e) {}
+  // Refresh Discover if open
+  if (STATE.currentPage === 'gaps') renderDiscoverSelection();
+}
+
+function clearToListen() {
+  STATE.toListenSet.clear();
+  STATE.toListenItems = {};
+  try { localStorage.removeItem('vinyl_tolisten'); } catch(e) {}
+  // Refresh checkboxes in collection if open
+  document.querySelectorAll('.album-select-cb').forEach(cb => cb.classList.remove('checked'));
+  document.querySelectorAll('.album-card').forEach(c => c.classList.remove('selected'));
+  renderDiscoverSelection();
+}
+
+function renderDiscoverSelection() {
+  const el = document.getElementById('discover-selection');
+  if (!el) return;
+  const count = STATE.toListenSet.size;
+  if (count === 0) {
+    el.innerHTML = '<div style="color:var(--text4);font-size:13px;padding:16px 0">No albums selected yet. Browse My Collection and tick albums to add them here.</div>';
+    return;
+  }
+  const items = Object.values(STATE.toListenItems).slice(0, 8);
+  el.innerHTML = `
+    <div class="selection-banner">
+      <div class="selection-banner-left">
+        <div>
+          <div class="selection-banner-count">${count}</div>
+          <div class="selection-banner-label">album${count !== 1 ? 's' : ''} to listen</div>
+        </div>
+        <div class="selection-covers">
+          ${items.map(a => a.coverUrl
+            ? `<img class="selection-cover-thumb" src="${escHtml(a.coverUrl)}" alt="">`
+            : '').join('')}
+        </div>
+      </div>
+      <button class="btn-clear-selection" onclick="clearToListen()">Clear list</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:14px;margin-top:4px">
+      ${Object.values(STATE.toListenItems).map(a => `
+        <div style="cursor:pointer" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
+          ${a.coverUrl ? `<img src="${escHtml(a.coverUrl)}" style="width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;display:block;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)" alt="">`
+            : `<div style="width:100%;aspect-ratio:1;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:6px">💿</div>`}
+          <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(a.album||'')}</div>
+          <div style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(a.artist||'')}</div>
+        </div>`).join('')}
+    </div>`;
+}
 const COVER_CACHE = {};
 
 async function fetchCoverArt(artist, album) {
@@ -1284,12 +1516,17 @@ function albumCardHtml(a, coverUrl) {
   const playsLabel = a.plays > 0 ? `${a.plays.toLocaleString()} plays` : '';
   const img        = coverUrl || a.coverUrl || '';
   const uid        = `ac-${encodeURIComponent((a.artist||'')+'::'+( a.album||''))}`.replace(/[^a-zA-Z0-9\-_]/g,'_').slice(0,60);
+  const key        = `${(a.artist||'')}::${(a.album||'')}`;
+  const isSelected = STATE.toListenSet.has(key);
   const artHtml    = img
     ? `<img class="album-art" id="${uid}-img" src="${img}" alt="" loading="lazy" onerror="this.style.display='none';document.getElementById('${uid}-ph').style.display='flex'">`
     : ``;
   const ph = `<div class="album-art-placeholder" id="${uid}-ph" ${img ? 'style="display:none"' : ''}><span>${escHtml(a.artist||'')}</span><strong>${escHtml(a.album||'')}</strong></div>`;
   return `
-    <div class="album-card" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
+    <div class="album-card${isSelected ? ' selected' : ''}" id="${uid}-card"
+      onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
+      <div class="album-select-cb${isSelected ? ' checked' : ''}" id="${uid}-cb"
+        onclick="event.stopPropagation();toggleToListen('${escHtml(key).replace(/'/g,"&#39;")}','${uid}','${escHtml(img).replace(/'/g,"&#39;")}')"></div>
       ${artHtml}${ph}
       <div class="album-title">${escHtml(a.album||'')}</div>
       <div class="album-artist">${escHtml(a.artist||'')}</div>
@@ -1390,7 +1627,7 @@ async function loadStatsForPeriod(period) {
 
   // Show loading in lists
   document.getElementById('top-artists-list').innerHTML = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
-  document.getElementById('top-albums-list').innerHTML  = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
+  document.getElementById('top-albums-grid').innerHTML  = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
   showSyncBar(`Fetching ${PERIOD_LABELS[period] || period} stats…`, 30);
 
   try {
@@ -1452,6 +1689,26 @@ async function buildYearlyScrobbles(weeksByYear) {
 
 function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
 
+let _carouselTimer = null;
+let _carouselIdx = 0;
+
+function goCarousel(idx) {
+  const slides = document.querySelectorAll('.week-carousel-slide');
+  const dots   = document.querySelectorAll('.week-carousel-dot');
+  slides.forEach((s,i) => s.classList.toggle('active', i === idx));
+  dots.forEach((d,i)   => d.classList.toggle('active', i === idx));
+  _carouselIdx = idx;
+}
+
+function startCarousel(total) {
+  if (_carouselTimer) clearInterval(_carouselTimer);
+  _carouselIdx = 0;
+  _carouselTimer = setInterval(() => {
+    _carouselIdx = (_carouselIdx + 1) % total;
+    goCarousel(_carouselIdx);
+  }, 3500);
+}
+
 function renderStats(period = 'overall') {
   const u = STATE.userInfo;
   const years = Object.keys(STATE.yearlyScrobbles).map(Number).sort();
@@ -1460,9 +1717,7 @@ function renderStats(period = 'overall') {
   const minYear = years.length ? Math.min(...years) : maxYear;
   const thisYearPlays = STATE.yearlyScrobbles[maxYear] || 0;
   const avgYearly = years.length ? Math.round(Object.values(STATE.yearlyScrobbles).reduce((a,b)=>a+b,0)/years.length) : 0;
-  const topArtistName = STATE.topArtists[0]?.name || '—';
 
-  // Only show overall stats cards when period is overall
   if (period === 'overall') {
     document.getElementById('stats-cards').innerHTML = `
       <div class="stat-card">
@@ -1485,35 +1740,7 @@ function renderStats(period = 'overall') {
         <div class="stat-card-label">Tracks scrobbled</div>
         <div class="stat-card-sub">All time</div>
       </div>`;
-    document.getElementById('yearly-chart-card').style.display = 'block';
-    document.getElementById('stats-years-range').textContent = `${minYear}–${maxYear}`;
-
-    // Only init chart once
-    if (!STATE._yearlyChartInit) {
-      STATE._yearlyChartInit = true;
-      const ctx = document.getElementById('chart-yearly').getContext('2d');
-      new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: years,
-      datasets: [{
-        data: years.map(y => STATE.yearlyScrobbles[y] || 0),
-        backgroundColor: years.map((y,i) => `rgba(200,169,110,${0.4 + 0.6*(i/years.length)})`),
-        borderRadius: 4, borderSkipped: false,
-      }]
-    },
-    options: {
-      responsive: true, plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#a8a8a0' } },
-        y: { grid: { color: '#f0f0ec' }, ticks: { font: { size: 11 }, color: '#a8a8a0' } }
-      }
-    }
-      });
-    }
   } else {
-    // For filtered periods, hide yearly chart and show period summary
-    document.getElementById('yearly-chart-card').style.display = 'none';
     const periodTotal = STATE.topArtists.reduce((s,a) => s + parseInt(a.playcount||0), 0);
     document.getElementById('stats-cards').innerHTML = `
       <div class="stat-card">
@@ -1527,55 +1754,46 @@ function renderStats(period = 'overall') {
         <div class="stat-card-sub">${PERIOD_LABELS[period]}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-card-val">${escHtml(STATE.topArtists[0]?.name||'—')}</div>
+        <div class="stat-card-val" style="font-size:18px">${escHtml(STATE.topArtists[0]?.name||'—')}</div>
         <div class="stat-card-label">Top artist</div>
         <div class="stat-card-sub">${parseInt(STATE.topArtists[0]?.playcount||0).toLocaleString()} plays</div>
       </div>
       <div class="stat-card">
-        <div class="stat-card-val">${escHtml(STATE.topAlbumsStats[0]?.name||'—')}</div>
+        <div class="stat-card-val" style="font-size:18px">${escHtml(STATE.topAlbumsStats[0]?.name||'—')}</div>
         <div class="stat-card-label">Top album</div>
         <div class="stat-card-sub">${parseInt(STATE.topAlbumsStats[0]?.playcount||0).toLocaleString()} plays</div>
       </div>`;
   }
 
-  // Top artists
+  // Top artists — keep as list
   const maxPlays = parseInt(STATE.topArtists[0]?.playcount || 1);
   document.getElementById('top-artists-list').innerHTML = STATE.topArtists.slice(0,20).map((a,i) => {
     const plays = parseInt(a.playcount||0);
-    const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
+    const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text']||'';
     return `
       <div class="top-row">
         <div class="top-rank">${i+1}</div>
         ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
-        <div class="top-info">
-          <div class="top-name">${escHtml(a.name)}</div>
-        </div>
-        <div>
-          <div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(plays/maxPlays*100)}%"></div></div>
-        </div>
+        <div class="top-info"><div class="top-name">${escHtml(a.name)}</div></div>
+        <div><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(plays/maxPlays*100)}%"></div></div></div>
         <div class="top-plays">${plays.toLocaleString()}<div class="top-plays-sub">plays</div></div>
       </div>`;
   }).join('');
 
-  // Top albums
-  const maxAlbPlays = parseInt(STATE.topAlbumsStats[0]?.playcount || 1);
-  document.getElementById('top-albums-list').innerHTML = STATE.topAlbumsStats.slice(0,20).map((a,i) => {
+  // Top albums — cover grid
+  document.getElementById('top-albums-grid').innerHTML = STATE.topAlbumsStats.slice(0,20).map((a,i) => {
     const plays = parseInt(a.playcount||0);
-    const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
+    const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text'] || lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || '';
     const artist = a.artist?.name || '';
-    return `
-      <div class="top-row">
-        <div class="top-rank">${i+1}</div>
-        ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">💿</div>`}
-        <div class="top-info">
-          <div class="top-name">${escHtml(a.name)}</div>
-          <div class="top-sub">${escHtml(artist)}</div>
-        </div>
-        <div>
-          <div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(plays/maxAlbPlays*100)}%"></div></div>
-        </div>
-        <div class="top-plays">${plays.toLocaleString()}<div class="top-plays-sub">plays</div></div>
-      </div>`;
+    const uid = `stat-${i}`;
+    return `<div class="album-card" onclick="openAlbumDetail('${escHtml(artist).replace(/'/g,"&#39;")}','${escHtml(a.name||'').replace(/'/g,"&#39;")}')">
+      ${img ? `<img class="album-art" src="${escHtml(img)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="album-art-placeholder" style="display:none"><span>${escHtml(artist)}</span><strong>${escHtml(a.name||'')}</strong></div>`
+      : `<div class="album-art-placeholder"><span>${escHtml(artist)}</span><strong>${escHtml(a.name||'')}</strong></div>`}
+      <div class="album-title">${escHtml(a.name||'')}</div>
+      <div class="album-artist">${escHtml(artist)}</div>
+      <div class="album-meta"><span class="album-plays">${plays.toLocaleString()} plays</span></div>
+    </div>`;
   }).join('');
 }
 
@@ -1599,18 +1817,17 @@ async function loadWrapped() {
   const years = [];
   for (let y = thisYear; y >= regYear; y--) years.push(y);
 
-  // Year chips
-  document.getElementById('wrapped-year-row').innerHTML = years.map(y =>
-    `<button class="year-chip" data-year="${y}" onclick="loadWrappedYear(${y})">${y}</button>`
-  ).join('');
+  const sel = document.getElementById('wrapped-year-select');
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  sel.value = thisYear;
 
   STATE.wrappedLoaded = true;
-  // Load current year by default
   await loadWrappedYear(thisYear);
 }
 
 async function loadWrappedYear(year) {
-  document.querySelectorAll('.year-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.year) === year));
+  const sel = document.getElementById('wrapped-year-select');
+  if (sel) sel.value = year;
 
   if (STATE.wrappedCache[year]) {
     renderWrappedYear(year, STATE.wrappedCache[year]);
@@ -1620,7 +1837,6 @@ async function loadWrappedYear(year) {
   const panelsEl = document.getElementById('wrapped-panels');
   panelsEl.innerHTML = '<div class="page-loading"><div class="load-spinner"></div><div class="load-text">Loading ' + year + '…</div></div>';
 
-  // Check localStorage cache (past years are immutable, cache for 1 week)
   const wCacheKey = `wrapped_${year}`;
   const thisYear  = new Date().getFullYear();
   const wCached   = cLoad(wCacheKey);
@@ -1633,29 +1849,8 @@ async function loadWrappedYear(year) {
   }
 
   try {
-    const from = Math.floor(new Date(year, 0, 1).getTime()/1000);
-    const to   = Math.floor(new Date(year, 11, 31, 23, 59, 59).getTime()/1000);
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-    // 1. Monthly counts — sequential with delay to avoid rate limits
-    showSyncBar(`Loading ${year} monthly data… 1/12`, 10);
-    const monthCounts = [];
-    for (let m = 0; m < 12; m++) {
-      const mFrom = Math.floor(new Date(year, m, 1).getTime()/1000);
-      const mTo   = Math.floor(new Date(year, m+1, 0, 23, 59, 59).getTime()/1000);
-      showSyncBar(`Loading ${year} monthly data… ${m+1}/12`, 10 + Math.round(40 * m / 12));
-      try {
-        const d = await lfm('user.getRecentTracks', { from: mFrom, to: mTo, limit: 1 });
-        monthCounts.push(parseInt(d.recenttracks?.['@attr']?.total || 0));
-      } catch { monthCounts.push(0); }
-      await sleep(120);
-    }
-    const totalYear = monthCounts.reduce((a,b) => a+b, 0);
-    const peakMonth = monthCounts.indexOf(Math.max(...monthCounts));
-
-    // 2. Top albums/artists for the year via getTopAlbums with date range
-    //    Last.fm getTopAlbums doesn't support from/to, so use weekly charts
-    showSyncBar(`Loading ${year} top albums…`, 55);
+    // Top albums/artists via weekly charts
+    showSyncBar(`Loading ${year} top albums…`, 10);
     const chartList  = await lfm('user.getWeeklyChartList');
     const yearCharts = lfmArr(chartList.weeklychartlist?.chart).filter(c =>
       new Date(parseInt(c.from)*1000).getFullYear() === year
@@ -1664,10 +1859,9 @@ async function loadWrappedYear(year) {
     const albumTotals  = {};
     const artistTotals = {};
 
-    // Sequential weekly fetches with small delay
     for (let i = 0; i < yearCharts.length; i++) {
       const wc = yearCharts[i];
-      showSyncBar(`Loading ${year} weekly charts… ${i+1}/${yearCharts.length}`, 55 + Math.round(35 * i / yearCharts.length));
+      showSyncBar(`Loading ${year} weekly charts… ${i+1}/${yearCharts.length}`, 10 + Math.round(80 * i / yearCharts.length));
       try {
         const [albumRes, artistRes] = await Promise.all([
           lfm('user.getWeeklyAlbumChart',  { from: wc.from, to: wc.to }),
@@ -1688,29 +1882,10 @@ async function loadWrappedYear(year) {
     }
     const albums  = Object.values(albumTotals).sort((a,b)  => b.plays-a.plays).slice(0,10);
     const artists = Object.values(artistTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
+    const totalYear = albums.reduce((s,a) => s+a.plays, 0);
+    const palette = YEAR_PALETTES[year % YEAR_PALETTES.length];
 
-    // 3. First & last scrobble — fetch first page ascending, last page descending
-    showSyncBar(`Loading ${year} first & last scrobble…`, 93);
-    let firstTrack = null, lastTrack = null;
-    try {
-      // First scrobble: page 1, oldest first (use from/to with page 1 gives earliest)
-      const firstRes = await lfm('user.getRecentTracks', { from, to, limit: 1, page: 1 });
-      const firstTracks = lfmArr(firstRes.recenttracks?.track);
-      firstTrack = firstTracks.find(t => !t['@attr']?.nowplaying) || null;
-    } catch(e) { /* ignore */ }
-    try {
-      // Last scrobble: no page param → most recent
-      const lastRes = await lfm('user.getRecentTracks', { from, to, limit: 1 });
-      const lastTracks = lfmArr(lastRes.recenttracks?.track);
-      lastTrack = lastTracks.find(t => !t['@attr']?.nowplaying) || null;
-    } catch(e) { /* ignore */ }
-
-    const paletteIdx = year % YEAR_PALETTES.length;
-    const palette    = YEAR_PALETTES[paletteIdx];
-
-    const data = { albums, artists, monthCounts, totalYear, peakMonth, monthNames, palette, firstTrack, lastTrack };
-
-    // Save to localStorage — past years permanently, current year short TTL
+    const data = { albums, artists, totalYear, palette };
     cSave(wCacheKey, { ...data, lastUpdated: Date.now() });
     STATE.wrappedCache[year] = data;
     hideSyncBar(`✓ ${year} loaded`);
@@ -1723,107 +1898,126 @@ async function loadWrappedYear(year) {
   }
 }
 
+/* ─── DOMINANT COLOUR EXTRACTION ─── */
+function extractDominantColour(imgUrl, callback) {
+  if (!imgUrl) { callback(null); return; }
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40; canvas.height = 40;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 40, 40);
+      const data = ctx.getImageData(0, 0, 40, 40).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 16) {
+        r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+      }
+      r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
+      // Darken for background use
+      const darken = 0.35;
+      const bg = `rgb(${Math.round(r*darken)},${Math.round(g*darken)},${Math.round(b*darken)})`;
+      // Brightness of bg to decide text colour
+      const lum = 0.299*r + 0.587*g + 0.114*b;
+      const fg = lum > 128 ? '#1a1a18' : '#f8f8f4';
+      const accent = `rgb(${Math.min(255,Math.round(r*1.4))},${Math.min(255,Math.round(g*1.4))},${Math.min(255,Math.round(b*1.4))})`;
+      callback({ bg, fg, accent });
+    } catch(e) { callback(null); }
+  };
+  img.onerror = () => callback(null);
+  img.src = imgUrl;
+}
+
 function renderWrappedYear(year, d) {
-  const { albums, artists, monthCounts, totalYear, peakMonth, monthNames, palette, firstTrack, lastTrack } = d;
-  const topImg = albums[0]?.image?.find(im=>im.size==='large')?.['#text']||'';
-  const maxMonth = Math.max(...monthCounts, 1);
-
+  const { albums, artists, totalYear, palette } = d;
+  const topImg = lfmArr(albums[0]?.image).find(im => im.size === 'extralarge' || im.size === 'large')?.['#text'] || '';
   const panelsEl = document.getElementById('wrapped-panels');
-  panelsEl.innerHTML = `
-    <div class="wrapped-hero" style="background:${palette.bg};color:${palette.fg}">
-      <div class="wrapped-hero-year">${year}</div>
-      <div class="wrapped-hero-title">${year} in music</div>
-      <div class="wrapped-hero-sub">Your listening portrait</div>
-      <div class="wrapped-kpis">
-        <div>
-          <div class="wrapped-kpi-val">${totalYear.toLocaleString()}</div>
-          <div class="wrapped-kpi-label">Scrobbles</div>
-        </div>
-        <div>
-          <div class="wrapped-kpi-val">${artists.length ? artists.length : '—'}</div>
-          <div class="wrapped-kpi-label">Artists</div>
-        </div>
-        <div>
-          <div class="wrapped-kpi-val">${monthNames[peakMonth]}</div>
-          <div class="wrapped-kpi-label">Peak month</div>
-        </div>
-        ${albums[0] ? `
-        <div>
-          <div class="wrapped-kpi-val" style="font-size:16px;line-height:1.3">${escHtml(albums[0].name)}</div>
-          <div class="wrapped-kpi-label">Top album · ${(albums[0].plays||0).toLocaleString()} plays</div>
-        </div>` : ''}
-      </div>
-    </div>
 
-    <div class="wrapped-grid">
-      <div class="wrapped-card">
-        <div class="wrapped-card-title">Top albums</div>
-        <div class="top-list">
-          ${albums.slice(0,10).map((a,i) => {
-            const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || lfmArr(a.image)[1]?.['#text'] || '';
-            const artist = a.artist?.name || a.artist || '';
-            return `<div class="top-row">
-              <div class="top-rank">${i+1}</div>
-              ${img ? `<img class="top-art" src="${escHtml(img)}" alt="">` : `<div class="top-art-placeholder">💿</div>`}
-              <div class="top-info"><div class="top-name">${escHtml(a.name||'')}</div><div class="top-sub">${escHtml(artist)}</div></div>
-              <div class="top-plays">${(a.plays||parseInt(a.playcount||0)).toLocaleString()}<div class="top-plays-sub">plays</div></div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-      <div class="wrapped-card">
-        <div class="wrapped-card-title">Top artists</div>
-        <div class="top-list">
-          ${artists.slice(0,10).map((a,i) => {
-            const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || lfmArr(a.image)[1]?.['#text'] || '';
-            return `<div class="top-row">
-              <div class="top-rank">${i+1}</div>
-              ${img ? `<img class="top-art" src="${escHtml(img)}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
-              <div class="top-info"><div class="top-name">${escHtml(a.name||'')}</div></div>
-              <div class="top-plays">${(a.plays||parseInt(a.playcount||0)).toLocaleString()}<div class="top-plays-sub">plays</div></div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-    </div>
+  function doRender(colours) {
+    const pal = colours || palette;
+    panelsEl.innerHTML = `
+      <div style="background:${pal.bg};border-radius:20px;overflow:hidden;margin-bottom:24px;transition:background .6s">
 
-    <div class="wrapped-card" style="margin-bottom:20px">
-      <div class="wrapped-card-title">Monthly listening — ${year}</div>
-      <div style="display:flex;gap:8px;align-items:flex-end;height:100px;margin-top:8px">
-        ${monthCounts.map((c,i) => `
-          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-            <div style="width:100%;border-radius:4px 4px 0 0;background:${palette.bg || 'var(--accent2)'};opacity:${0.3+0.7*(c/maxMonth)};min-height:2px;height:${Math.round(84*(c/maxMonth))}px"></div>
-            <div style="font-size:9px;color:var(--text4)">${monthNames[i]}</div>
-          </div>`).join('')}
-      </div>
-    </div>
+        <!-- Hero -->
+        <div style="display:grid;grid-template-columns:300px 1fr;gap:48px;align-items:center;padding:52px 52px 44px;position:relative;overflow:hidden">
+          <div style="font-family:'DM Serif Display',serif;font-size:260px;font-weight:400;line-height:1;
+            opacity:.06;position:absolute;bottom:-60px;right:-10px;pointer-events:none;color:${pal.fg};white-space:nowrap">${year}</div>
 
-    ${firstTrack || lastTrack ? `
-    <div class="charts-2col" style="margin-bottom:20px">
-      ${firstTrack ? `
-      <div class="wrapped-card">
-        <div class="wrapped-card-title">First scrobble of ${year}</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-          ${firstTrack.image?.find(im=>im.size==='medium')?.['#text'] ? `<img style="width:48px;height:48px;border-radius:6px;object-fit:cover" src="${firstTrack.image.find(im=>im.size==='medium')['#text']}" alt="">` : '<div style="width:48px;height:48px;border-radius:6px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:20px">🎵</div>'}
-          <div>
-            <div style="font-weight:600;font-size:13px">${escHtml(firstTrack.name||'')}</div>
-            <div style="font-size:12px;color:var(--text3)">${escHtml(firstTrack.artist?.['#text']||'')} · ${escHtml(firstTrack.album?.['#text']||'')}</div>
+          ${topImg
+            ? `<img src="${escHtml(topImg)}" style="width:260px;height:260px;border-radius:14px;object-fit:cover;box-shadow:0 28px 60px rgba(0,0,0,.55);flex-shrink:0;display:block" alt="">`
+            : `<div style="width:260px;height:260px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:72px">🎵</div>`}
+
+          <div style="position:relative;z-index:1;color:${pal.fg}">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.5;margin-bottom:10px">Your year in music</div>
+            <div style="font-family:'DM Serif Display',serif;font-size:80px;font-weight:400;line-height:.9;margin-bottom:20px;letter-spacing:-2px">${year}</div>
+            ${albums[0] ? `<div style="font-size:22px;font-weight:700;line-height:1.2;margin-bottom:4px">${escHtml(albums[0].name)}</div>
+            <div style="font-size:15px;opacity:.6;margin-bottom:32px">${escHtml(albums[0].artist||'')}</div>` : ''}
+            <div style="display:flex;gap:40px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:13px;font-weight:700;letter-spacing:-0.5px">${artists[0] ? escHtml(artists[0].name) : '—'}</div>
+                <div style="font-size:10px;opacity:.5;text-transform:uppercase;letter-spacing:1.2px;margin-top:2px">Top artist</div>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700">${albums.length}</div>
+                <div style="font-size:10px;opacity:.5;text-transform:uppercase;letter-spacing:1.2px;margin-top:2px">Albums</div>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700">${artists.length}</div>
+                <div style="font-size:10px;opacity:.5;text-transform:uppercase;letter-spacing:1.2px;margin-top:2px">Artists</div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>` : ''}
-      ${lastTrack ? `
-      <div class="wrapped-card">
-        <div class="wrapped-card-title">Last scrobble of ${year}</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-          ${lastTrack.image?.find(im=>im.size==='medium')?.['#text'] ? `<img style="width:48px;height:48px;border-radius:6px;object-fit:cover" src="${lastTrack.image.find(im=>im.size==='medium')['#text']}" alt="">` : '<div style="width:48px;height:48px;border-radius:6px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:20px">🎵</div>'}
-          <div>
-            <div style="font-weight:600;font-size:13px">${escHtml(lastTrack.name||'')}</div>
-            <div style="font-size:12px;color:var(--text3)">${escHtml(lastTrack.artist?.['#text']||'')} · ${escHtml(lastTrack.album?.['#text']||'')}</div>
+
+        <!-- Top Albums Grid -->
+        <div style="padding:0 52px 48px;color:${pal.fg}">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.45;margin-bottom:20px">Top albums</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:20px">
+            ${albums.map((a, i) => {
+              const img = lfmArr(a.image).find(im=>im.size==='extralarge'||im.size==='large')?.['#text']
+                       || lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || '';
+              return `<div style="cursor:pointer" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.name||'').replace(/'/g,"&#39;")}')">
+                ${img
+                  ? `<img src="${escHtml(img)}" style="width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;display:block;margin-bottom:10px;box-shadow:0 6px 20px rgba(0,0,0,.4);transition:transform .25s" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform=''" alt="">`
+                  : `<div style="width:100%;aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:10px">💿</div>`}
+                <div style="font-size:10px;font-weight:700;opacity:.35;margin-bottom:2px;color:${pal.fg}">${i+1}</div>
+                <div style="font-size:13px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${pal.fg}">${escHtml(a.name||'')}</div>
+                <div style="font-size:11px;opacity:.55;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;color:${pal.fg}">${escHtml(a.artist||'')}</div>
+                <div style="font-size:11px;opacity:.4;margin-top:2px;color:${pal.fg}">${a.plays.toLocaleString()} plays</div>
+              </div>`;
+            }).join('')}
           </div>
         </div>
-      </div>` : ''}
-    </div>` : ''}
-  `;
+
+        <!-- Top Artists List -->
+        <div style="padding:0 52px 52px;color:${pal.fg}">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.45;margin-bottom:16px">Top artists</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            ${artists.map((a, i) => {
+              const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text']||'';
+              return `<div style="display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:8px;transition:background .15s;cursor:default"
+                onmouseover="this.style.background='rgba(255,255,255,.07)'" onmouseout="this.style.background=''">
+                <div style="font-size:13px;font-weight:700;opacity:.35;width:22px;text-align:right;flex-shrink:0;color:${pal.fg}">${i+1}</div>
+                ${img ? `<img src="${escHtml(img)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="">`
+                      : `<div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px">🎤</div>`}
+                <div style="flex:1;font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${pal.fg}">${escHtml(a.name||'')}</div>
+                <div style="font-size:13px;font-weight:600;opacity:.65;flex-shrink:0;color:${pal.fg}">${a.plays.toLocaleString()}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+      </div>`;
+  }
+
+  // Kick off colour extraction from top album cover, render immediately with palette fallback
+  panelsEl.innerHTML = '<div class="page-loading"><div class="load-spinner"></div><div class="load-text">Rendering…</div></div>';
+  if (topImg) {
+    extractDominantColour(topImg, colours => doRender(colours));
+  } else {
+    doRender(null);
+  }
 }
 
 /* ══════════════════════════════════════════════
@@ -1866,89 +2060,55 @@ async function loadThisWeek() {
       totalWeek = artists.reduce((s,a) => s + parseInt(a.playcount||0), 0);
     }
 
-    // Daily breakdown
-    const dailyCounts = [0,0,0,0,0,0,0];
-    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    for (const t of tracks) {
-      if (t['@attr']?.nowplaying) continue;
-      const ts = parseInt(t.date?.uts || 0);
-      if (!ts) continue;
-      const d = new Date(ts*1000);
-      const dow = (d.getDay() + 6) % 7; // Mon=0
-      dailyCounts[dow]++;
-    }
-
-    // Average weekly (from yearly scrobbles if loaded)
+    // Average weekly
     const years = Object.values(STATE.yearlyScrobbles);
     const avgWeekly = years.length ? Math.round(years.reduce((a,b)=>a+b,0) / (years.length * 52)) : null;
 
-    const maxDay = Math.max(...dailyCounts, 1);
     document.getElementById('week-subtitle').textContent = `${totalWeek.toLocaleString()} scrobbles this week${avgWeekly ? ` · avg ${avgWeekly.toLocaleString()}/week` : ''}`;
 
     document.getElementById('thisweek-content').innerHTML = `
-      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+      <div class="week-carousel-wrap" id="week-carousel">
+        ${albums.map((a, i) => {
+          const img = lfmArr(a.image).find(im=>im.size==='extralarge'||im.size==='large')?.['#text']
+                   || lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || '';
+          const artist = a.artist?.name||'';
+          return `<div class="week-carousel-slide${i===0?' active':''}" data-idx="${i}">
+            ${img ? `<div class="week-carousel-bg" style="background-image:url('${escHtml(img)}')"></div>
+              <img class="week-carousel-cover" src="${escHtml(img)}" alt="">` : `<div class="week-carousel-cover-placeholder">💿</div>`}
+            <div class="week-carousel-info">
+              <div class="week-carousel-rank">#${i+1} this week</div>
+              <div class="week-carousel-album">${escHtml(a.name)}</div>
+              <div class="week-carousel-artist">${escHtml(artist)}</div>
+              <div class="week-carousel-plays">${parseInt(a.playcount||0).toLocaleString()} plays</div>
+            </div>
+          </div>`;
+        }).join('')}
+        <div class="week-carousel-dots">
+          ${albums.map((_,i) => `<div class="week-carousel-dot${i===0?' active':''}" onclick="goCarousel(${i})"></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="week-stats-row">
         <div class="stat-card">
           <div class="stat-card-val">${totalWeek.toLocaleString()}</div>
-          <div class="stat-card-label">This week</div>
+          <div class="stat-card-label">Scrobbles</div>
           ${avgWeekly ? `<div class="stat-card-sub">${totalWeek > avgWeekly ? '↑' : '↓'} avg ${avgWeekly.toLocaleString()}/wk</div>` : ''}
         </div>
         <div class="stat-card">
           <div class="stat-card-val">${albums.length}</div>
           <div class="stat-card-label">Albums</div>
-          <div class="stat-card-sub">Listened this week</div>
+          <div class="stat-card-sub">This week</div>
         </div>
         <div class="stat-card">
           <div class="stat-card-val">${artists.length}</div>
           <div class="stat-card-label">Artists</div>
           <div class="stat-card-sub">This week</div>
         </div>
-      </div>
+      </div>`;
 
-      <div class="week-card" style="margin-bottom:20px">
-        <div class="week-card-title">Daily breakdown</div>
-        <div class="daily-bar-wrap">
-          ${dailyCounts.map((c,i) => `
-            <div class="daily-bar-col">
-              <div class="daily-bar-val">${c||''}</div>
-              <div class="daily-bar-fill" style="height:${Math.round(70*(c/maxDay))}px"></div>
-              <div class="daily-bar-lbl">${dayNames[i]}</div>
-            </div>`).join('')}
-        </div>
-      </div>
-
-      <div class="week-grid">
-        <div class="week-card">
-          <div class="week-card-title">Top albums this week</div>
-          <div class="top-list">
-            ${albums.slice(0,10).map((a,i) => {
-              const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text']||'';
-              const artist = a.artist?.name||'';
-              return `<div class="top-row">
-                <div class="top-rank">${i+1}</div>
-                ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">💿</div>`}
-                <div class="top-info"><div class="top-name">${escHtml(a.name)}</div><div class="top-sub">${escHtml(artist)}</div></div>
-                <div class="top-plays">${parseInt(a.playcount||0)}<div class="top-plays-sub">plays</div></div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
-        <div class="week-card">
-          <div class="week-card-title">Top artists this week</div>
-          <div class="top-list">
-            ${artists.slice(0,10).map((a,i) => {
-              const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text']||'';
-              return `<div class="top-row">
-                <div class="top-rank">${i+1}</div>
-                ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
-                <div class="top-info"><div class="top-name">${escHtml(a.name)}</div></div>
-                <div class="top-plays">${parseInt(a.playcount||0)}<div class="top-plays-sub">plays</div></div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
-      </div>
-    `;
-    STATE.weekLoaded = true; // only mark loaded on success
+    // Auto-rotate carousel
+    startCarousel(albums.length);
+    STATE.weekLoaded = true;
   } catch(e) {
     console.error('This week error:', e);
     document.getElementById('thisweek-content').innerHTML = `<div style="padding:40px;color:var(--text3)">Could not load this week's data: ${escHtml(e.message)}</div>`;
@@ -1957,9 +2117,10 @@ async function loadThisWeek() {
 }
 
 /* ══════════════════════════════════════════════
-   GAPS PAGE
+   DISCOVER PAGE (formerly Gaps)
    ══════════════════════════════════════════════ */
-function buildGapsHTML(unplayed, rarelyPlayed, notOwned) {
+
+function buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums) {
   function albumRow(a) {
     return `<div class="top-row gaps-filterable" data-format="${escHtml(a.format||'')}">
       <div class="top-art-placeholder">💿</div>
@@ -1981,56 +2142,65 @@ function buildGapsHTML(unplayed, rarelyPlayed, notOwned) {
       <div class="top-plays">${a.plays}<div class="top-plays-sub">plays</div></div>
     </div>`;
   }
+
+  // Format filter
+  const filterHtml = `
+    <div class="collection-controls" style="margin-bottom:20px">
+      <select class="filter-select" id="gaps-filter-format" onchange="filterGaps()">
+        <option value="">All formats</option>
+        <option value="CD">CD</option>
+        <option value="mp3">MP3</option>
+        <option value="Spotify">Spotify</option>
+      </select>
+      <span style="font-size:12px;color:var(--text3);align-self:center">Filter owned sections</span>
+    </div>`;
+
   return `
-    <div class="gaps-grid">
-      <div class="gaps-card">
-        <div class="gaps-card-title">Owned but never played <span class="gaps-section-count">${unplayed.length}</span></div>
-        <div class="gaps-card-sub">Albums in your collection with 0 Last.fm scrobbles</div>
+    ${filterHtml}
+
+    <!-- 1. My Current Selection -->
+    <div class="discover-card" style="margin-bottom:20px">
+      <div class="discover-card-title">My current selection</div>
+      <div class="discover-card-sub">Albums you've flagged from your collection to listen to next</div>
+      <div id="discover-selection"></div>
+    </div>
+
+    <!-- 2. Nostalgia -->
+    <div class="discover-card" style="margin-bottom:20px">
+      <div class="discover-card-title">Nostalgia</div>
+      <div class="discover-card-sub">Albums you used to love but haven't listened to in years</div>
+      <div class="nostalgia-grid">
+        ${nostalgiaAlbums.length === 0
+          ? '<div style="color:var(--text4);font-size:13px;padding:8px 0">Not enough historical data yet to suggest nostalgia picks.</div>'
+          : nostalgiaAlbums.map(a => {
+              const img = a.coverUrl || '';
+              return `<div class="nostalgia-card" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
+                ${img ? `<img class="nostalgia-cover" src="${escHtml(img)}" alt="">` : `<div class="nostalgia-cover-placeholder">💿</div>`}
+                <div class="nostalgia-name">${escHtml(a.album||'')}</div>
+                <div class="nostalgia-artist">${escHtml(a.artist||'')}</div>
+              </div>`;
+            }).join('')}
+      </div>
+    </div>
+
+    <!-- 3 & 4: Owned sections -->
+    <div class="discover-grid">
+      <div class="discover-card gaps-card">
+        <div class="discover-card-title">Owned but never played <span class="gaps-section-count">${unplayed.length}</span></div>
+        <div class="discover-card-sub">Albums in your collection with 0 Last.fm scrobbles</div>
         <div class="top-list">${unplayed.slice(0,30).map(albumRow).join('')}</div>
       </div>
-      <div class="gaps-card">
-        <div class="gaps-card-title">Rarely played <span class="gaps-section-count">${rarelyPlayed.length}</span></div>
-        <div class="gaps-card-sub">Albums you own with very few plays</div>
+      <div class="discover-card gaps-card">
+        <div class="discover-card-title">Rarely played <span class="gaps-section-count">${rarelyPlayed.length}</span></div>
+        <div class="discover-card-sub">Albums you own with very few plays</div>
         <div class="top-list">${rarelyPlayed.slice(0,30).map(rareRow).join('')}</div>
       </div>
-      <div class="gaps-card" style="grid-column:1/-1">
-        <div class="gaps-card-title">Artists you love but don't own</div>
-        <div class="gaps-card-sub">Your most-scrobbled artists with nothing in your collection</div>
-        <div class="top-list">
-          ${notOwned.slice(0,20).map((a,i) => {
-            const img = a.image?.find(im=>im.size==='medium')?.['#text']||'';
-            return `<div class="top-row">
-              <div class="top-rank">${i+1}</div>
-              ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
-              <div class="top-info"><div class="top-name">${escHtml(a.name)}</div></div>
-              <div class="top-plays">${parseInt(a.playcount||0).toLocaleString()}<div class="top-plays-sub">plays</div></div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
     </div>`;
-}
-
-function filterGaps() {
-  const fmt = (document.getElementById('gaps-filter-format')?.value || '').toLowerCase();
-  document.querySelectorAll('.gaps-filterable').forEach(row => {
-    const rowFmt = (row.dataset.format || '').toLowerCase();
-    const visible = !fmt || rowFmt === fmt;
-    row.style.display = visible ? '' : 'none';
-  });
-  // Update visible counts on each section
-  document.querySelectorAll('.gaps-card').forEach(card => {
-    const countEl = card.querySelector('.gaps-section-count');
-    if (!countEl) return;
-    const visible = card.querySelectorAll('.gaps-filterable:not([style*="none"])').length;
-    countEl.textContent = visible;
-  });
 }
 
 async function loadGaps() {
   STATE.gapsLoaded = true;
   try {
-    // Need top artists and collection
     if (!STATE.topArtists.length) {
       const ta = await lfm('user.getTopArtists', { period: 'overall', limit: 100 });
       STATE.topArtists = lfmArr(ta.topartists?.artist);
@@ -2043,23 +2213,43 @@ async function loadGaps() {
     const playsMap = buildPlaysMap();
     const collection = STATE.collection;
 
-    // 1. Owned but unplayed (0 plays on Last.fm)
+    // 1. Owned but unplayed
     const unplayed = collection.filter(a => lookupPlays(a.artist, a.album, playsMap) === 0);
 
-    // 2. Owned but rarely played (bottom 20% of plays for owned albums)
+    // 2. Rarely played (bottom 20%)
     const withPlays = collection.map(a => ({ ...a, plays: lookupPlays(a.artist, a.album, playsMap) }))
       .filter(a => a.plays > 0).sort((a,b) => a.plays - b.plays);
     const rarelyPlayed = withPlays.slice(0, Math.ceil(withPlays.length * 0.2));
 
-    // 3. Loved on Last.fm but not in collection
-    const ownedArtists = new Set(collection.map(a => (a.artist||'').toLowerCase()));
-    const notOwned = STATE.topArtists.filter(a => !ownedArtists.has((a.name||'').toLowerCase()));
+    // 3. Nostalgia: albums with high all-time plays but low recent-year plays
+    //    Use STATE.topAlbumsAllTime (all time plays) vs STATE.topAlbums52w (last year plays)
+    const recent52wMap = {};
+    for (const a of STATE.topAlbums52w) {
+      recent52wMap[albumKey(a)] = parseInt(a.playcount||0);
+    }
+    const nostalgiaPool = STATE.topAlbumsAllTime
+      .filter(a => {
+        const allTimePlays  = parseInt(a.playcount||0);
+        const recentPlays   = recent52wMap[albumKey(a)] || 0;
+        const ratio = allTimePlays > 0 ? recentPlays / allTimePlays : 1;
+        // Must have decent all-time plays, but almost nothing recent
+        return allTimePlays >= 20 && ratio < 0.05;
+      })
+      .sort(() => Math.random() - 0.5)  // shuffle
+      .slice(0, 5);
 
-        document.getElementById('gaps-content').innerHTML = buildGapsHTML(unplayed, rarelyPlayed, notOwned);
+    // Fetch cover art for nostalgia picks
+    const nostalgiaAlbums = await Promise.all(nostalgiaPool.map(async a => {
+      const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text'] || '';
+      return { artist: a.artist?.name||a.artist||'', album: a.name||'', coverUrl: img };
+    }));
+
+    document.getElementById('gaps-content').innerHTML = buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums);
+    renderDiscoverSelection();
     filterGaps();
   } catch(e) {
-    console.error('Gaps error:', e);
-    document.getElementById('gaps-content').innerHTML = '<div style="padding:40px;color:var(--text3)">Could not load gaps data</div>';
+    console.error('Discover error:', e);
+    document.getElementById('gaps-content').innerHTML = '<div style="padding:40px;color:var(--text3)">Could not load discover data: ' + escHtml(e.message) + '</div>';
   }
 }
 
@@ -2075,12 +2265,24 @@ function openAlbumDetail(artist, album) {
 
 /* ─── AUTO-LOAD if saved ─── */
 window.addEventListener('DOMContentLoaded', () => {
+  // Restore To Listen list
+  try {
+    const saved = localStorage.getItem('vinyl_tolisten');
+    if (saved) {
+      const keys = JSON.parse(saved);
+      keys.forEach(k => {
+        STATE.toListenSet.add(k);
+        const [artist, album] = k.split('::');
+        STATE.toListenItems[k] = { artist, album, coverUrl: '' };
+      });
+    }
+  } catch(e) {}
+
   const savedUser = localStorage.getItem('vinyl_username');
   const savedCsvUrl = localStorage.getItem('vinyl_csv_url');
   if (savedUser) {
     document.getElementById('input-username').value = savedUser;
     if (savedCsvUrl) document.getElementById('input-csv-url').value = savedCsvUrl;
-    // Auto-launch dashboard if we have saved credentials
     initDashboard();
   }
 });
