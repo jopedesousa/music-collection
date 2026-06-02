@@ -1885,6 +1885,13 @@ async function loadWrappedYear(year) {
     const totalYear = albums.reduce((s,a) => s+a.plays, 0);
     const palette = YEAR_PALETTES[year % YEAR_PALETTES.length];
 
+    // Fetch cover art for top albums (weekly chart has no images)
+    showSyncBar(`Loading ${year} album covers…`, 93);
+    await Promise.all(albums.map(async a => {
+      const url = await fetchCoverArt(a.artist, a.name);
+      if (url) a.coverUrl = url;
+    }));
+
     const data = { albums, artists, totalYear, palette };
     cSave(wCacheKey, { ...data, lastUpdated: Date.now() });
     STATE.wrappedCache[year] = data;
@@ -1931,7 +1938,7 @@ function extractDominantColour(imgUrl, callback) {
 
 function renderWrappedYear(year, d) {
   const { albums, artists, totalYear, palette } = d;
-  const topImg = lfmArr(albums[0]?.image).find(im => im.size === 'extralarge' || im.size === 'large')?.['#text'] || '';
+  const topImg = albums[0]?.coverUrl || lfmArr(albums[0]?.image).find(im => im.size === 'extralarge' || im.size === 'large')?.['#text'] || '';
   const panelsEl = document.getElementById('wrapped-panels');
 
   function doRender(colours) {
@@ -1975,7 +1982,7 @@ function renderWrappedYear(year, d) {
           <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.45;margin-bottom:20px">Top albums</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:20px">
             ${albums.map((a, i) => {
-              const img = lfmArr(a.image).find(im=>im.size==='extralarge'||im.size==='large')?.['#text']
+              const img = a.coverUrl || lfmArr(a.image).find(im=>im.size==='extralarge'||im.size==='large')?.['#text']
                        || lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || '';
               return `<div style="cursor:pointer" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.name||'').replace(/'/g,"&#39;")}')">
                 ${img
@@ -2196,6 +2203,20 @@ function buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums) {
         <div class="top-list">${rarelyPlayed.slice(0,30).map(rareRow).join('')}</div>
       </div>
     </div>`;
+}
+
+function filterGaps() {
+  const fmt = (document.getElementById('gaps-filter-format')?.value || '').toLowerCase();
+  document.querySelectorAll('.gaps-filterable').forEach(row => {
+    const rowFmt = (row.dataset.format || '').toLowerCase();
+    row.style.display = (!fmt || rowFmt === fmt) ? '' : 'none';
+  });
+  document.querySelectorAll('.gaps-card').forEach(card => {
+    const countEl = card.querySelector('.gaps-section-count');
+    if (!countEl) return;
+    const visible = card.querySelectorAll('.gaps-filterable:not([style*="none"])').length;
+    countEl.textContent = visible;
+  });
 }
 
 async function loadGaps() {
