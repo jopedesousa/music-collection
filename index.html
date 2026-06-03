@@ -920,6 +920,7 @@ let STATE = {
   gapsLoaded: false,
   toListenSet: new Set(),    // keys of albums in To Listen list
   toListenItems: {},         // key -> { artist, album, coverUrl } for display
+  historicalData: null,      // loaded from vinyl-data.json via IndexedDB
 };
 
 /* ══════════════════════════════════════════════
@@ -1138,6 +1139,12 @@ async function initDashboard() {
     document.getElementById('dashboard').style.display = 'block';
 
     updateUserChip();
+    // Load historical data in background — does not block home render.
+    // All downstream functions check STATE.historicalData before falling back to live API.
+    loadHistoricalData().then(() => {
+      // If home shelves are already rendered from cache, no need to re-render.
+      // If they're still loading (slow network), historicalData will be ready for them.
+    });
     loadHomeData();
   } catch(e) {
     STATE.username = ''; // reset on failure
@@ -1209,6 +1216,12 @@ function refreshCurrentPage() {
 function clearAllCache() {
   if (!confirm('Clear all cached Last.fm data?\n\nThe dashboard will re-fetch everything from scratch next time you open each page.')) return;
   cClear();
+  // Also clear IndexedDB historical data
+  idbSet('historical', null).catch(() => {});
+  openIDB().then(db => {
+    try { db.transaction(IDB_STORE, 'readwrite').objectStore(IDB_STORE).delete('historical'); } catch(e) {}
+  }).catch(() => {});
+  STATE.historicalData = null;
   STATE.statsLoaded = false;
   STATE.wrappedLoaded = false;
   STATE.weekLoaded = false;
@@ -1244,16 +1257,36 @@ async function loadHomeData() {
 
     // Cache stale or missing — fetch from Last.fm
     showSyncBar('Loading your top albums…', 10);
-    const [allTime, month, w52, overall] = await Promise.all([
-      lfm('user.getTopAlbums', { period: 'overall', limit: 50 }),
+
+    // If historical data is already loaded, use it for all-time and 5y shelves
+    // (saves 2 API calls; 52w and 1month are always live)
+    let allTimeAlbums, overallAlbums;
+    if (STATE.historicalData?.topAlbums?.length) {
+      // topAlbums in vinyl-data.json is already sorted by plays, shape matches Last.fm
+      allTimeAlbums = STATE.historicalData.topAlbums.slice(0, 50);
+      overallAlbums = STATE.historicalData.topAlbums.slice(0, 200);
+    }
+
+    const livePromises = [
       lfm('user.getTopAlbums', { period: '1month', limit: 50 }),
       lfm('user.getTopAlbums', { period: '12month', limit: 500 }),
-      lfm('user.getTopAlbums', { period: 'overall', limit: 200 }),
-    ]);
-    STATE.topAlbumsAllTime = lfmArr(allTime.topalbums?.album);
+    ];
+    // Only fetch all-time from API if we don't have historical data
+    if (!allTimeAlbums) {
+      livePromises.push(lfm('user.getTopAlbums', { period: 'overall', limit: 50 }));
+      livePromises.push(lfm('user.getTopAlbums', { period: 'overall', limit: 200 }));
+    }
+
+    const liveResults = await Promise.all(livePromises);
+    const month   = liveResults[0];
+    const w52     = liveResults[1];
+    const allTime = allTimeAlbums ? null : liveResults[2];
+    const overall = overallAlbums ? null : liveResults[3];
+
+    STATE.topAlbumsAllTime = allTimeAlbums || lfmArr(allTime.topalbums?.album);
     STATE.topAlbums1month  = lfmArr(month.topalbums?.album);
     STATE.topAlbums52w     = lfmArr(w52.topalbums?.album);
-    STATE.topAlbums5y      = lfmArr(overall.topalbums?.album);
+    STATE.topAlbums5y      = overallAlbums  || lfmArr(overall.topalbums?.album);
 
     cSave('home_albums', {
       allTime:  STATE.topAlbumsAllTime,
@@ -1707,12 +1740,24 @@ async function buildYearlyScrobbles(weeksByYear) {
   delete STATE.yearlyScrobbles.lastUpdated;
   delete STATE.yearlyScrobbles.lastYear;
 
+  // Use historical data for past years if available — no API calls needed
+  if (STATE.historicalData?.yearlyScrobbles) {
+    const hist = STATE.historicalData.yearlyScrobbles;
+    for (const yr of years) {
+      if (yr < thisYear && !STATE.yearlyScrobbles[yr] && hist[yr] !== undefined) {
+        STATE.yearlyScrobbles[yr] = hist[yr];
+      }
+    }
+  }
+
   // Past years never change — only fetch missing ones + current year
   const missing = years.filter(yr => yr < thisYear && !STATE.yearlyScrobbles[yr]);
   const needsFetch = [...missing, thisYear]; // always refresh current year
   const total = needsFetch.length;
 
-  showSyncBar(`Loading yearly scrobbles… 0 / ${total}`, 5);
+  if (total > 1 || (total === 1 && needsFetch[0] === thisYear)) {
+    showSyncBar(`Loading yearly scrobbles… 0 / ${total}`, 5);
+  }
 
   // Fetch sequentially to avoid rate limiting (150ms between calls)
   for (let i = 0; i < needsFetch.length; i++) {
@@ -1733,6 +1778,70 @@ async function buildYearlyScrobbles(weeksByYear) {
 }
 
 function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+/* ══════════════════════════════════════════════
+   INDEXEDDB — HISTORICAL DATA STORE
+   Stores vinyl-data.json with a 24h TTL.
+   Key: 'historical' → { data, fetchedAt }
+   ══════════════════════════════════════════════ */
+const IDB_NAME    = 'vinyl_db';
+const IDB_STORE   = 'blobs';
+const IDB_VERSION = 1;
+const HISTORICAL_URL = 'https://jopedesousa.github.io/music-collection/vinyl-data.json';
+const HISTORICAL_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await openIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await openIDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(IDB_STORE, 'readwrite');
+    const req = tx.objectStore(IDB_STORE).put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function loadHistoricalData() {
+  try {
+    // Check IndexedDB cache first
+    const cached = await idbGet('historical');
+    if (cached && (Date.now() - cached.fetchedAt) < HISTORICAL_TTL) {
+      STATE.historicalData = cached.data;
+      hideSyncBar('✓ Historical data ready');
+      return;
+    }
+
+    showSyncBar('Loading historical data…', 15);
+    const res = await fetch(HISTORICAL_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    STATE.historicalData = data;
+    await idbSet('historical', { data, fetchedAt: Date.now() });
+    hideSyncBar('✓ Historical data ready');
+  } catch(e) {
+    // Non-fatal — dashboard falls back to live API everywhere
+    hideSyncBar();
+    console.warn('vinyl-data.json unavailable, using live API:', e.message);
+  }
+}
 
 let _carouselTimer = null;
 let _carouselIdx = 0;
@@ -1894,6 +2003,55 @@ async function loadWrappedYear(year) {
   }
 
   try {
+    // ── FAST PATH: use pre-fetched historical data for past years ──
+    if (year < thisYear && STATE.historicalData?.weeklyAlbumCharts && STATE.historicalData?.weeklyArtistCharts) {
+      showSyncBar(`Building ${year} from historical data…`, 20);
+
+      const albumTotals  = {};
+      const artistTotals = {};
+
+      // Iterate over all weekly album chart entries for this year
+      for (const [weekKey, tracks] of Object.entries(STATE.historicalData.weeklyAlbumCharts)) {
+        const weekYear = new Date(parseInt(weekKey) * 1000).getFullYear();
+        if (weekYear !== year) continue;
+        for (const a of (tracks || [])) {
+          const k = `${(a.artist||'').toLowerCase()}::${(a.name||a.album||'').toLowerCase()}`;
+          if (!albumTotals[k]) albumTotals[k] = { name: a.name||a.album||'', artist: a.artist||'', plays: 0 };
+          albumTotals[k].plays += parseInt(a.playcount||a.plays||0);
+        }
+      }
+
+      for (const [weekKey, tracks] of Object.entries(STATE.historicalData.weeklyArtistCharts)) {
+        const weekYear = new Date(parseInt(weekKey) * 1000).getFullYear();
+        if (weekYear !== year) continue;
+        for (const a of (tracks || [])) {
+          const k = (a.name||'').toLowerCase();
+          if (!artistTotals[k]) artistTotals[k] = { name: a.name||'', plays: 0, image: a.image||[] };
+          artistTotals[k].plays += parseInt(a.playcount||a.plays||0);
+        }
+      }
+
+      const albums  = Object.values(albumTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
+      const artists = Object.values(artistTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
+      const totalYear = albums.reduce((s,a) => s+a.plays, 0);
+      const palette   = YEAR_PALETTES[year % YEAR_PALETTES.length];
+
+      // Fetch cover art (still needs API — no covers in historical data)
+      showSyncBar(`Loading ${year} album covers…`, 75);
+      await Promise.all(albums.map(async a => {
+        const url = await fetchCoverArt(a.artist, a.name);
+        if (url) a.coverUrl = url;
+      }));
+
+      const data = { albums, artists, totalYear, palette };
+      cSave(wCacheKey, { ...data, lastUpdated: Date.now() });
+      STATE.wrappedCache[year] = data;
+      hideSyncBar(`✓ ${year} loaded`);
+      renderWrappedYear(year, data);
+      return;
+    }
+
+    // ── SLOW PATH: fetch weekly charts live from Last.fm ──
     // Top albums/artists via weekly charts
     showSyncBar(`Loading ${year} top albums…`, 10);
     const chartList  = await lfm('user.getWeeklyChartList');
@@ -2335,10 +2493,14 @@ async function loadGaps() {
       .filter(a => a.plays > 0).sort((a,b) => a.plays - b.plays);
     const rarelyPlayed = withPlays.slice(0, Math.ceil(withPlays.length * 0.2));
 
-    // 3. Nostalgia pool — fetch top 500 all-time for a wider candidate set
+    // 3. Nostalgia pool — use historical top 500 if available, else fetch from API
     showSyncBar('Building nostalgia pool…', 60);
     let nostalgiaSource = STATE.topAlbumsAllTime;
-    if (nostalgiaSource.length < 500) {
+
+    if (STATE.historicalData?.topAlbums?.length >= 50) {
+      // Historical data has top 500 all-time — use it directly, no API call needed
+      nostalgiaSource = STATE.historicalData.topAlbums;
+    } else if (nostalgiaSource.length < 500) {
       // topAlbumsAllTime may have been fetched with a lower limit — re-fetch with 500
       try {
         const big = await lfm('user.getTopAlbums', { period: 'overall', limit: 500 });
