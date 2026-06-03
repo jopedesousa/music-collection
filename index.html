@@ -284,7 +284,7 @@ body {
 
 .collection-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(130px, 160px));
   gap: 20px;
 }
 .album-card {
@@ -835,7 +835,7 @@ canvas { max-height: 220px !important; }
       <div style="margin-top:24px;display:flex;flex-direction:column;gap:16px">
         <div class="chart-card" style="margin-bottom:0">
           <div class="chart-header"><div class="chart-title">Top albums</div><div class="chart-meta" id="top-albums-period-label">all time</div></div>
-          <div class="collection-grid" id="top-albums-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-top:4px"></div>
+          <div class="collection-grid" id="top-albums-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,130px));gap:14px;margin-top:4px"></div>
         </div>
         <div class="chart-card" style="margin-bottom:0">
           <div class="chart-header"><div class="chart-title">Top artists</div><div class="chart-meta" id="top-artists-period-label">all time</div></div>
@@ -2258,7 +2258,8 @@ function buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums) {
     </div>`;
 }
 
-let _nostalgiaPool = []; // full pool, shuffle gives new 5
+let _nostalgiaPool = [];
+let _nostalgiaShown = new Set(); // keys shown in the current batch — excluded from next More click
 
 function renderNostalgiaItems(items) {
   if (!items.length) return '<div style="color:var(--text4);font-size:13px;padding:8px 0">Not enough historical data yet.</div>';
@@ -2277,10 +2278,17 @@ function renderNostalgiaItems(items) {
 
 function refreshNostalgia() {
   if (!_nostalgiaPool.length) return;
-  // Pick 5 different ones from the pool (cycle through)
-  const shuffled = [..._nostalgiaPool].sort(() => Math.random() - 0.5).slice(0, 5);
+  // Exclude albums shown in the last batch
+  let candidates = _nostalgiaPool.filter(a => !_nostalgiaShown.has(`${a.artist}::${a.album}`));
+  // If fewer than 5 are left, reset exclusions and use the full pool
+  if (candidates.length < 5) {
+    _nostalgiaShown.clear();
+    candidates = _nostalgiaPool;
+  }
+  const picked = [...candidates].sort(() => Math.random() - 0.5).slice(0, 5);
+  _nostalgiaShown = new Set(picked.map(a => `${a.artist}::${a.album}`));
   const el = document.getElementById('nostalgia-grid');
-  if (el) el.innerHTML = renderNostalgiaItems(shuffled);
+  if (el) el.innerHTML = renderNostalgiaItems(picked);
 }
 
 function filterGaps() {
@@ -2327,7 +2335,7 @@ async function loadGaps() {
       .filter(a => a.plays > 0).sort((a,b) => a.plays - b.plays);
     const rarelyPlayed = withPlays.slice(0, Math.ceil(withPlays.length * 0.2));
 
-    // 3. Nostalgia: albums with high all-time plays but low recent-year plays
+    // 3. Nostalgia: heavily played before the last 52 weeks, zero plays in the last 52 weeks
     const recent52wMap = {};
     for (const a of STATE.topAlbums52w) {
       recent52wMap[albumKey(a)] = parseInt(a.playcount||0);
@@ -2335,10 +2343,11 @@ async function loadGaps() {
     _nostalgiaPool = await Promise.all(
       STATE.topAlbumsAllTime
         .filter(a => {
-          const allTimePlays = parseInt(a.playcount||0);
-          const recentPlays  = recent52wMap[albumKey(a)] || 0;
-          const ratio = allTimePlays > 0 ? recentPlays / allTimePlays : 1;
-          return allTimePlays >= 20 && ratio < 0.05;
+          const allTimePlays  = parseInt(a.playcount||0);
+          const recent52wPlays = recent52wMap[albumKey(a)] || 0;
+          const beforeLastYear = allTimePlays - recent52wPlays;
+          // Heavily played historically (≥20 plays before last year) AND zero plays in last 52w
+          return beforeLastYear >= 20 && recent52wPlays === 0;
         })
         .map(async a => {
           const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text']
@@ -2346,7 +2355,10 @@ async function loadGaps() {
           return { artist: a.artist?.name||a.artist||'', album: a.name||'', coverUrl: img||'' };
         })
     );
-    const nostalgiaAlbums = [..._nostalgiaPool].sort(() => Math.random() - 0.5).slice(0, 5);
+    // Pick first batch, tracking what's shown so More never repeats
+    const firstBatch = [..._nostalgiaPool].sort(() => Math.random() - 0.5).slice(0, 5);
+    _nostalgiaShown = new Set(firstBatch.map(a => `${a.artist}::${a.album}`));
+    const nostalgiaAlbums = firstBatch;
 
     // Fetch covers for unplayed/rarely played rows (using Last.fm album.getinfo)
     const coverFetch = async (a) => {
