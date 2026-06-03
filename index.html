@@ -424,6 +424,7 @@ canvas { max-height: 220px !important; }
 .wrapped-albums-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  max-width: calc(5 * 130px + 4 * 20px);
   gap: 20px;
 }
 .wrapped-album-card { cursor: pointer; }
@@ -496,12 +497,12 @@ canvas { max-height: 220px !important; }
 }
 .week-carousel-cover {
   position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
-  width: 200px; height: 200px; border-radius: 12px; object-fit: cover;
+  width: 160px; height: 160px; border-radius: 12px; object-fit: cover;
   box-shadow: 0 20px 60px rgba(0,0,0,.5);
 }
 .week-carousel-cover-placeholder {
   position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
-  width: 200px; height: 200px; border-radius: 12px;
+  width: 160px; height: 160px; border-radius: 12px;
   background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center;
   font-size: 64px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
 }
@@ -806,7 +807,7 @@ canvas { max-height: 220px !important; }
         <select class="filter-select" id="filter-sort" onchange="filterCollection()">
           <option value="album">Album</option>
           <option value="artist_album">Artist / Album</option>
-          <option value="artist_year_album">Artist / Year / Album</option>
+          <option value="artist_year_album" selected>Artist / Year / Album</option>
           <option value="year">Year</option>
           <option value="plays">Most Played</option>
           <option value="rating">My Rating</option>
@@ -831,14 +832,14 @@ canvas { max-height: 220px !important; }
         <button class="period-btn" data-period="7day" onclick="setStatsPeriod('7day')">Last 7 days</button>
       </div>
       <div class="stats-grid" id="stats-cards"></div>
-      <div class="charts-2col" style="margin-top:24px">
+      <div style="margin-top:24px;display:flex;flex-direction:column;gap:16px">
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="chart-header"><div class="chart-title">Top albums</div><div class="chart-meta" id="top-albums-period-label">all time</div></div>
+          <div class="collection-grid" id="top-albums-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-top:4px"></div>
+        </div>
         <div class="chart-card" style="margin-bottom:0">
           <div class="chart-header"><div class="chart-title">Top artists</div><div class="chart-meta" id="top-artists-period-label">all time</div></div>
           <div class="top-list" id="top-artists-list"></div>
-        </div>
-        <div class="chart-card" style="margin-bottom:0">
-          <div class="chart-header"><div class="chart-title">Top albums</div><div class="chart-meta" id="top-albums-period-label">all time</div></div>
-          <div class="collection-grid" id="top-albums-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-top:4px"></div>
         </div>
       </div>
     </div>
@@ -1178,6 +1179,7 @@ function navigate(page) {
   if (page === 'wrapped' && !STATE.wrappedLoaded) loadWrapped();
   if (page === 'thisweek' && !STATE.weekLoaded) loadThisWeek();
   if (page === 'gaps' && !STATE.gapsLoaded) loadGaps();
+  else if (page === 'gaps' && STATE.gapsLoaded) renderDiscoverSelection(); // always live-update selection
 }
 
 function refreshCurrentPage() {
@@ -1998,13 +2000,13 @@ function renderWrappedYear(year, d) {
       <div style="background:${pal.bg};border-radius:20px;overflow:hidden;margin-bottom:24px;transition:background .6s">
 
         <!-- Hero -->
-        <div style="display:grid;grid-template-columns:300px 1fr;gap:48px;align-items:center;padding:52px 52px 44px;position:relative;overflow:hidden">
+        <div style="display:grid;grid-template-columns:160px 1fr;gap:40px;align-items:center;padding:48px 48px 40px;position:relative;overflow:hidden">
           <div style="font-family:'DM Serif Display',serif;font-size:260px;font-weight:400;line-height:1;
             opacity:.06;position:absolute;bottom:-60px;right:-10px;pointer-events:none;color:${pal.fg};white-space:nowrap">${year}</div>
 
           ${topImg
-            ? `<img src="${escHtml(topImg)}" style="width:260px;height:260px;border-radius:14px;object-fit:cover;box-shadow:0 28px 60px rgba(0,0,0,.55);flex-shrink:0;display:block" alt="">`
-            : `<div style="width:260px;height:260px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:72px">🎵</div>`}
+            ? `<img src="${escHtml(topImg)}" style="width:160px;height:160px;border-radius:14px;object-fit:cover;box-shadow:0 28px 60px rgba(0,0,0,.55);flex-shrink:0;display:block" alt="">`
+            : `<div style="width:160px;height:160px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:72px">🎵</div>`}
 
           <div style="position:relative;z-index:1;color:${pal.fg}">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.5;margin-bottom:10px">Your year in music</div>
@@ -2031,7 +2033,7 @@ function renderWrappedYear(year, d) {
         <!-- Top Albums Grid -->
         <div style="padding:0 52px 48px;color:${pal.fg}">
           <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.45;margin-bottom:20px">Top albums</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:20px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));max-width:calc(5 * 130px + 4 * 20px);gap:20px">
             ${albums.map((a, i) => {
               const img = a.coverUrl || lfmArr(a.image).find(im=>im.size==='extralarge'||im.size==='large')?.['#text']
                        || lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || '';
