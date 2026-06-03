@@ -2335,27 +2335,49 @@ async function loadGaps() {
       .filter(a => a.plays > 0).sort((a,b) => a.plays - b.plays);
     const rarelyPlayed = withPlays.slice(0, Math.ceil(withPlays.length * 0.2));
 
-    // 3. Nostalgia: heavily played before the last 52 weeks, zero plays in the last 52 weeks
+    // 3. Nostalgia pool — fetch top 500 all-time for a wider candidate set
+    showSyncBar('Building nostalgia pool…', 60);
+    let nostalgiaSource = STATE.topAlbumsAllTime;
+    if (nostalgiaSource.length < 200) {
+      // topAlbumsAllTime was fetched with limit:200 earlier — re-fetch with 500 for nostalgia
+      try {
+        const big = await lfm('user.getTopAlbums', { period: 'overall', limit: 500 });
+        nostalgiaSource = lfmArr(big.topalbums?.album);
+      } catch(e) { /* fall back to what we have */ }
+    }
+
     const recent52wMap = {};
     for (const a of STATE.topAlbums52w) {
       recent52wMap[albumKey(a)] = parseInt(a.playcount||0);
     }
+
+    // Score each album: historicalPlays × (1 − recentRatio)
+    // Since eligible albums have 0 recent plays, score = historicalPlays exactly,
+    // but formula is written in full for future extensibility
+    const scored = nostalgiaSource
+      .map(a => {
+        const allTimePlays   = parseInt(a.playcount||0);
+        const recent52wPlays = recent52wMap[albumKey(a)] || 0;
+        const historicalPlays = allTimePlays - recent52wPlays;
+        const recentRatio = allTimePlays > 0 ? recent52wPlays / allTimePlays : 0;
+        const score = historicalPlays * (1 - recentRatio);
+        return { a, allTimePlays, recent52wPlays, historicalPlays, score };
+      })
+      .filter(({ historicalPlays, recent52wPlays }) =>
+        historicalPlays >= 20 && recent52wPlays === 0
+      )
+      .sort((x, y) => y.score - x.score)
+      .slice(0, 50); // top 50 draw pool
+
     _nostalgiaPool = await Promise.all(
-      STATE.topAlbumsAllTime
-        .filter(a => {
-          const allTimePlays  = parseInt(a.playcount||0);
-          const recent52wPlays = recent52wMap[albumKey(a)] || 0;
-          const beforeLastYear = allTimePlays - recent52wPlays;
-          // Heavily played historically (≥20 plays before last year) AND zero plays in last 52w
-          return beforeLastYear >= 20 && recent52wPlays === 0;
-        })
-        .map(async a => {
-          const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text']
-                   || await fetchCoverArt(a.artist?.name||a.artist||'', a.name||'');
-          return { artist: a.artist?.name||a.artist||'', album: a.name||'', coverUrl: img||'' };
-        })
+      scored.map(async ({ a }) => {
+        const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text']
+                 || await fetchCoverArt(a.artist?.name||a.artist||'', a.name||'');
+        return { artist: a.artist?.name||a.artist||'', album: a.name||'', coverUrl: img||'' };
+      })
     );
-    // Pick first batch, tracking what's shown so More never repeats
+
+    // Pick first batch, seed the shown-set so More never repeats
     const firstBatch = [..._nostalgiaPool].sort(() => Math.random() - 0.5).slice(0, 5);
     _nostalgiaShown = new Set(firstBatch.map(a => `${a.artist}::${a.album}`));
     const nostalgiaAlbums = firstBatch;
