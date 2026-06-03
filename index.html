@@ -1247,7 +1247,7 @@ async function loadHomeData() {
     const [allTime, month, w52, overall] = await Promise.all([
       lfm('user.getTopAlbums', { period: 'overall', limit: 50 }),
       lfm('user.getTopAlbums', { period: '1month', limit: 50 }),
-      lfm('user.getTopAlbums', { period: '12month', limit: 50 }),
+      lfm('user.getTopAlbums', { period: '12month', limit: 500 }),
       lfm('user.getTopAlbums', { period: 'overall', limit: 200 }),
     ]);
     STATE.topAlbumsAllTime = lfmArr(allTime.topalbums?.album);
@@ -2338,8 +2338,8 @@ async function loadGaps() {
     // 3. Nostalgia pool — fetch top 500 all-time for a wider candidate set
     showSyncBar('Building nostalgia pool…', 60);
     let nostalgiaSource = STATE.topAlbumsAllTime;
-    if (nostalgiaSource.length < 200) {
-      // topAlbumsAllTime was fetched with limit:200 earlier — re-fetch with 500 for nostalgia
+    if (nostalgiaSource.length < 500) {
+      // topAlbumsAllTime may have been fetched with a lower limit — re-fetch with 500
       try {
         const big = await lfm('user.getTopAlbums', { period: 'overall', limit: 500 });
         nostalgiaSource = lfmArr(big.topalbums?.album);
