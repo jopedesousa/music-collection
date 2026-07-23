@@ -766,6 +766,7 @@ canvas { max-height: 220px !important; }
     <button class="btn-primary" onclick="initDashboard()">Open Dashboard →</button>
     <div id="setup-error"></div>
   </div>
+  <div style="font-size:11px;color:var(--text4);letter-spacing:1px;text-transform:uppercase">v1.3.0</div>
 </div>
 
 <!-- ─── DASHBOARD ─── -->
@@ -1813,13 +1814,14 @@ function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
    ══════════════════════════════════════════════ */
 
 // Strip state (module-level so RAF and mousemove handlers share it)
-let _stripAlbums     = [];   // album data array
-let _stripOffset     = 0;    // current scroll offset in px
-let _stripTarget     = 0;    // target offset (mouse drives this)
-let _stripCentreIdx  = 0;    // index of currently centred album
-let _stripRAF        = null; // requestAnimationFrame handle
-let _stripMouseX     = null; // last mouse X relative to container
-const STRIP_ITEM_W   = 180;  // 160px cover + 20px gap
+let _stripAlbums    = [];     // album data array
+let _stripOffset    = 0;      // current rendered scroll offset in px (float)
+let _stripVelocity  = 0;      // px/frame set by mouse position, 0 when mouse leaves
+let _stripCentreIdx = 0;      // index of currently centred album
+let _stripRAF       = null;   // requestAnimationFrame handle
+let _stripActive    = false;  // true while mouse is inside the strip
+const STRIP_ITEM_W  = 180;    // 160px cover + 20px gap
+const STRIP_MAX_SPD = 22;     // px per frame at full deflection (~1320px/s at 60fps)
 
 function _stripGetContainerWidth() {
   const el = document.querySelector('.week-strip-outer');
@@ -1829,29 +1831,27 @@ function _stripGetContainerWidth() {
 function _stripUpdateLayout() {
   const track = document.querySelector('.week-strip-track');
   if (!track || !_stripAlbums.length) return;
-  const cw = _stripGetContainerWidth();
-  // Centre the first item on load: offset so item 0 starts at (cw/2 - 80)
-  const centreX  = cw / 2 - 80; // 80 = half of 160px cover
-  const maxOffset = Math.max(0, _stripAlbums.length * STRIP_ITEM_W - cw);
-  const clampedOffset = Math.min(Math.max(0, _stripOffset), maxOffset);
-  track.style.transform = `translateX(${centreX - clampedOffset}px)`;
+  const cw        = _stripGetContainerWidth();
+  const centreX   = cw / 2 - 80;                          // px from left edge to where cover left-edge should sit
+  const maxOffset = (_stripAlbums.length - 1) * STRIP_ITEM_W; // stop when last album is centred
 
-  // Determine which item is closest to viewport centre
+  _stripOffset = Math.min(Math.max(0, _stripOffset), maxOffset);
+  track.style.transform = `translateX(${centreX - _stripOffset}px)`;
+
+  // Find which item is closest to viewport centre
   const items = track.querySelectorAll('.week-strip-item');
   let closest = 0, minDist = Infinity;
   items.forEach((el, i) => {
-    const itemCentre = centreX - clampedOffset + i * STRIP_ITEM_W + 80;
+    const itemCentre = centreX - _stripOffset + i * STRIP_ITEM_W + 80;
     const dist = Math.abs(itemCentre - cw / 2);
     if (dist < minDist) { minDist = dist; closest = i; }
-    el.classList.toggle('centre', false);
-    el.classList.toggle('side', true);
+    el.classList.remove('centre');
+    el.classList.add('side');
   });
   if (items[closest]) {
     items[closest].classList.add('centre');
     items[closest].classList.remove('side');
   }
-
-  // Update info panel if centre changed
   if (closest !== _stripCentreIdx) {
     _stripCentreIdx = closest;
     _stripUpdateInfo();
@@ -1863,22 +1863,35 @@ function _stripUpdateInfo() {
   if (!panel || !_stripAlbums.length) return;
   const a = _stripAlbums[_stripCentreIdx];
   if (!a) return;
+  const artist = a.artist?.['#text'] || a.artist?.name || (typeof a.artist === 'string' ? a.artist : '') || '';
   panel.innerHTML = `
     <div class="week-info-rank">#${_stripCentreIdx + 1} this week</div>
     <div class="week-info-album">${escHtml(a.name || '')}</div>
-    <div class="week-info-artist">${escHtml(a.artist?.['#text'] || a.artist?.name || (typeof a.artist === 'string' ? a.artist : '') || '')}</div>
+    <div class="week-info-artist">${escHtml(artist)}</div>
     <div class="week-info-plays">${parseInt(a.playcount || 0).toLocaleString()} plays</div>`;
 }
 
 function _stripRAFLoop() {
-  // Smooth lerp toward target
-  const prev = _stripOffset;
-  _stripOffset += (_stripTarget - _stripOffset) * 0.18;
-  if (Math.abs(_stripOffset - prev) > 0.1) {
-    _stripUpdateLayout();
+  if (_stripActive) {
+    // While mouse is inside: apply velocity every frame
+    if (Math.abs(_stripVelocity) > 0.05) {
+      _stripOffset += _stripVelocity;
+      _stripUpdateLayout();
+    }
     _stripRAF = requestAnimationFrame(_stripRAFLoop);
   } else {
-    _stripRAF = null;
+    // Mouse has left: glide to rest smoothly then stop RAF
+    const snapTarget = _stripCentreIdx * STRIP_ITEM_W;
+    const delta = snapTarget - _stripOffset;
+    if (Math.abs(delta) > 0.3) {
+      _stripOffset += delta * 0.14;
+      _stripUpdateLayout();
+      _stripRAF = requestAnimationFrame(_stripRAFLoop);
+    } else {
+      _stripOffset = snapTarget;
+      _stripUpdateLayout();
+      _stripRAF = null;
+    }
   }
 }
 
@@ -1888,28 +1901,34 @@ function _stripOnMouseMove(e) {
   const rect = outer.getBoundingClientRect();
   const x    = e.clientX - rect.left;
   const w    = rect.width;
-  const cw   = _stripGetContainerWidth();
-  // Clamp to first/last album: stop when first or last album is centred
-  const maxOffset = Math.max(0, (_stripAlbums.length - 1) * STRIP_ITEM_W);
 
-  // Map mouse X to -1…+1 where 0 = dead centre (no movement)
-  // Full range of the container drives full speed
-  const norm  = (x / w) * 2 - 1;           // -1 (far left) to +1 (far right)
-  const dead  = 0.12;                        // ±12% centre dead zone
-  let speed   = 0;
-  if (Math.abs(norm) > dead) {
-    // Quadratic ramp: light near centre, fast at edges
+  // norm: -1 (far left) → 0 (centre) → +1 (far right)
+  const norm = (x / w) * 2 - 1;
+  const dead = 0.08; // ±8% dead zone at centre
+
+  if (Math.abs(norm) <= dead) {
+    _stripVelocity = 0;
+  } else {
+    // Quadratic ramp so small moves near centre feel gentle
     const t = (Math.abs(norm) - dead) / (1 - dead); // 0→1
-    speed = Math.sign(norm) * t * t * 36;           // max ~36px per frame at edge
+    _stripVelocity = Math.sign(norm) * t * t * STRIP_MAX_SPD;
   }
 
-  _stripTarget = Math.min(Math.max(0, _stripTarget + speed), maxOffset);
+  if (!_stripRAF) {
+    _stripActive = true;
+    _stripRAF = requestAnimationFrame(_stripRAFLoop);
+  }
+}
+
+function _stripOnMouseEnter() {
+  _stripActive = true;
   if (!_stripRAF) _stripRAF = requestAnimationFrame(_stripRAFLoop);
 }
 
 function _stripOnMouseLeave() {
-  // Snap target to the currently centred album so it lands cleanly
-  _stripTarget = _stripCentreIdx * STRIP_ITEM_W;
+  _stripVelocity = 0;
+  _stripActive   = false;
+  // RAF keeps running to glide snap into place
   if (!_stripRAF) _stripRAF = requestAnimationFrame(_stripRAFLoop);
 }
 
@@ -1955,9 +1974,10 @@ async function loadThisWeek() {
       `${totalWeek.toLocaleString()} plays since Monday${avgWeekly ? ` · avg ${avgWeekly.toLocaleString()}/week` : ''}`;
 
     // Build strip HTML
-    _stripAlbums = albums;
-    _stripOffset = 0;
-    _stripTarget = 0;
+    _stripAlbums    = albums;
+    _stripOffset    = 0;
+    _stripVelocity  = 0;
+    _stripActive    = false;
     _stripCentreIdx = 0;
 
     const itemsHtml = albums.map((a, i) => {
@@ -2005,6 +2025,7 @@ async function loadThisWeek() {
 
     // Wire mouse events
     const outer = document.getElementById('week-strip-outer');
+    outer.addEventListener('mouseenter', _stripOnMouseEnter);
     outer.addEventListener('mousemove',  _stripOnMouseMove);
     outer.addEventListener('mouseleave', _stripOnMouseLeave);
 
