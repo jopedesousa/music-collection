@@ -491,7 +491,7 @@ canvas { max-height: 220px !important; }
   position: relative;
   overflow: hidden;
   padding: 40px 0 32px;
-  cursor: none; /* hide default cursor; we use custom edge hints */
+  cursor: default;
   user-select: none;
 }
 /* Edge cursor zones — left/right 20% of container */
@@ -1866,14 +1866,14 @@ function _stripUpdateInfo() {
   panel.innerHTML = `
     <div class="week-info-rank">#${_stripCentreIdx + 1} this week</div>
     <div class="week-info-album">${escHtml(a.name || '')}</div>
-    <div class="week-info-artist">${escHtml(a.artist?.name || a.artist || '')}</div>
+    <div class="week-info-artist">${escHtml(a.artist?.['#text'] || a.artist?.name || (typeof a.artist === 'string' ? a.artist : '') || '')}</div>
     <div class="week-info-plays">${parseInt(a.playcount || 0).toLocaleString()} plays</div>`;
 }
 
 function _stripRAFLoop() {
   // Smooth lerp toward target
   const prev = _stripOffset;
-  _stripOffset += (_stripTarget - _stripOffset) * 0.08;
+  _stripOffset += (_stripTarget - _stripOffset) * 0.18;
   if (Math.abs(_stripOffset - prev) > 0.1) {
     _stripUpdateLayout();
     _stripRAF = requestAnimationFrame(_stripRAFLoop);
@@ -1889,26 +1889,26 @@ function _stripOnMouseMove(e) {
   const x    = e.clientX - rect.left;
   const w    = rect.width;
   const cw   = _stripGetContainerWidth();
-  const maxOffset = Math.max(0, _stripAlbums.length * STRIP_ITEM_W - cw);
+  // Clamp to first/last album: stop when first or last album is centred
+  const maxOffset = Math.max(0, (_stripAlbums.length - 1) * STRIP_ITEM_W);
 
-  // Dead zone: middle 40% → no movement
-  const zone = w * 0.20; // each edge zone is 20% of width
-  let speed = 0;
-  if (x < zone) {
-    speed = -(1 - x / zone);          // negative = scroll left
-  } else if (x > w - zone) {
-    speed = (x - (w - zone)) / zone;  // positive = scroll right
+  // Map mouse X to -1…+1 where 0 = dead centre (no movement)
+  // Full range of the container drives full speed
+  const norm  = (x / w) * 2 - 1;           // -1 (far left) to +1 (far right)
+  const dead  = 0.12;                        // ±12% centre dead zone
+  let speed   = 0;
+  if (Math.abs(norm) > dead) {
+    // Quadratic ramp: light near centre, fast at edges
+    const t = (Math.abs(norm) - dead) / (1 - dead); // 0→1
+    speed = Math.sign(norm) * t * t * 36;           // max ~36px per frame at edge
   }
-  // Max nudge per frame ~6px
-  _stripTarget = Math.min(Math.max(0, _stripTarget + speed * 6), maxOffset);
 
+  _stripTarget = Math.min(Math.max(0, _stripTarget + speed), maxOffset);
   if (!_stripRAF) _stripRAF = requestAnimationFrame(_stripRAFLoop);
 }
 
 function _stripOnMouseLeave() {
-  // Snap to nearest album when mouse leaves
-  const cw = _stripGetContainerWidth();
-  const centreX = cw / 2 - 80;
+  // Snap target to the currently centred album so it lands cleanly
   _stripTarget = _stripCentreIdx * STRIP_ITEM_W;
   if (!_stripRAF) _stripRAF = requestAnimationFrame(_stripRAFLoop);
 }
@@ -1985,7 +1985,7 @@ async function loadThisWeek() {
     albums.forEach(async (a, i) => {
       const existing = lfmArr(a.image).find(im => im.size === 'extralarge' || im.size === 'large')?.['#text'];
       if (existing) return;
-      const artistName = a.artist?.['#text'] || a.artist?.name || a.artist || '';
+      const artistName = a.artist?.['#text'] || a.artist?.name || (typeof a.artist === 'string' ? a.artist : '') || '';
       const url = await fetchCoverArt(artistName, a.name || '');
       if (url) {
         const item = document.querySelector(`.week-strip-item[data-idx="${i}"]`);
