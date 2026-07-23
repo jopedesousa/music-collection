@@ -1,439 +1,2637 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Library & Discover</title>
-    <style>
-        :root {
-            --bg-color: #121212;
-            --surface-color: #1e1e1e;
-            --primary-color: #1db954; /* Spotify green-ish for familiar music vibe */
-            --text-main: #ffffff;
-            --text-muted: #a7a7a7;
-            --danger-color: #e22134;
-            --card-radius: 8px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VINYL — Music Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ─── DESIGN SYSTEM ─── */
+:root {
+  --bg: #fafaf8;
+  --bg2: #f2f2ef;
+  --bg3: #e8e8e4;
+  --surface: #ffffff;
+  --border: #deded8;
+  --border-light: #ebebе6;
+  --text: #1a1a18;
+  --text2: #3d3d38;
+  --text3: #6e6e68;
+  --text4: #a8a8a0;
+  --accent: #1a1a18;
+  --accent2: #c8a96e;
+  --green: #4a7c59;
+  --red: #c0392b;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            padding: 20px;
-        }
+/* ─── SETUP SCREEN ─── */
+#setup-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; gap: 32px; padding: 40px 20px;
+  background: var(--bg);
+}
+.setup-logo { text-align: center; }
+.setup-wordmark {
+  font-family: 'DM Serif Display', serif;
+  font-size: 52px; color: var(--text); letter-spacing: -1px; line-height: 1;
+}
+.setup-tagline { font-size: 13px; color: var(--text4); margin-top: 6px; letter-spacing: 2px; text-transform: uppercase; }
+.setup-card {
+  background: var(--surface); border-radius: var(--radius); padding: 36px;
+  max-width: 520px; width: 100%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 8px 32px rgba(0,0,0,.06);
+  border: 1px solid var(--border);
+}
+.setup-title { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+.setup-desc { font-size: 13px; color: var(--text3); margin-bottom: 28px; line-height: 1.6; }
+.field-group { margin-bottom: 18px; }
+.field-label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; display: block; }
+.field {
+  width: 100%; background: var(--bg2); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px 14px;
+  font-family: inherit; font-size: 14px; color: var(--text); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.field:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(200,169,110,.15); }
+.field::placeholder { color: var(--text4); }
+.field-hint { font-size: 11px; color: var(--text4); margin-top: 5px; line-height: 1.5; }
+.btn-primary {
+  width: 100%; background: var(--text); color: #fff; border: none;
+  border-radius: var(--radius-sm); padding: 13px; font-family: inherit;
+  font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px;
+  transition: opacity .15s; letter-spacing: .2px;
+}
+.btn-primary:hover { opacity: .85; }
+.btn-sm {
+  background: var(--bg2); color: var(--text2); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 16px; font-family: inherit;
+  font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s;
+}
+.btn-sm:hover { border-color: var(--accent2); color: var(--text); }
+.divider-text { text-align: center; font-size: 12px; color: var(--text4); margin: 16px 0; position: relative; }
+.divider-text::before, .divider-text::after {
+  content: ''; position: absolute; top: 50%; width: 38%; height: 1px; background: var(--border);
+}
+.divider-text::before { left: 0; }
+.divider-text::after { right: 0; }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #333;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
+/* ─── TOP BAR ─── */
+#dashboard { display: none; }
+.top-bar {
+  height: 56px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  padding: 0 24px; background: rgba(255,255,255,.92);
+  backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.top-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px; color: var(--text); letter-spacing: -.5px; cursor: pointer;
+}
+.top-logo span { color: var(--accent2); }
+.top-nav { display: flex; gap: 2px; justify-content: center; }
+.top-right-wrap { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.nav-btn {
+  padding: 7px 14px; font-size: 13px; font-weight: 500; color: var(--text3);
+  cursor: pointer; border: none; background: none; border-radius: 8px;
+  transition: all .15s; font-family: inherit; white-space: nowrap;
+}
+.nav-btn:hover { color: var(--text); background: var(--bg2); }
+.nav-btn.active { color: var(--text); background: var(--bg2); font-weight: 600; }
+.top-right { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 10px; }
+.user-chip {
+  display: flex; align-items: center; gap: 7px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px 5px 8px;
+  font-size: 12px; font-weight: 500; color: var(--text2);
+}
+.user-avatar {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--accent2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #fff;
+}
 
-        .tabs button {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-right: 20px;
-            cursor: pointer;
-            padding-bottom: 5px;
-        }
+/* ─── LAYOUT ─── */
+.content { padding: 32px 28px; max-width: 1400px; margin: 0 auto; min-height: calc(100vh - 56px); }
 
-        .tabs button.active {
-            color: var(--text-main);
-            border-bottom: 2px solid var(--primary-color);
-        }
+/* ─── TAB PAGES ─── */
+.page { display: none; }
+.page.active { display: block; }
 
-        .section-title {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+/* ─── HOME — SHELVES ─── */
+.home-header { margin-bottom: 40px; }
+.home-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 38px; color: var(--text); letter-spacing: -.5px; line-height: 1.1;
+}
+.home-title em { color: var(--accent2); font-style: italic; }
+.home-subtitle { font-size: 14px; color: var(--text3); margin-top: 8px; }
 
-        /* Grid Layouts */
-        .album-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
+.shelf-section { margin-bottom: 48px; }
+.shelf-label {
+  font-size: 11px; font-weight: 600; color: var(--text4); text-transform: uppercase;
+  letter-spacing: 2px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
+}
+.shelf-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-        /* Album Card */
-        .album-card {
-            background-color: var(--surface-color);
-            border-radius: var(--card-radius);
-            padding: 10px;
-            position: relative;
-            transition: transform 0.2s, background-color 0.2s;
-        }
-        
-        .album-card:hover {
-            transform: translateY(-5px);
-            background-color: #2a2a2a;
-        }
+.shelf-scroll-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  padding-bottom: 8px;
+}
+.shelf-scroll-wrap::-webkit-scrollbar { height: 4px; }
+.shelf-scroll-wrap::-webkit-scrollbar-track { background: transparent; }
+.shelf-scroll-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.shelf-records {
+  display: flex; gap: 16px; align-items: flex-end;
+  min-height: 175px;
+  width: max-content; min-width: 100%;
+  padding: 12px 0 4px;
+}
 
-        .cover-art {
-            width: 100%;
-            aspect-ratio: 1/1;
-            background-color: #333;
-            border-radius: 4px;
-            object-fit: cover;
-            margin-bottom: 10px;
-        }
+/* ─── RECORD CARD ─── */
+.record-card {
+  flex-shrink: 0; width: 160px;
+  cursor: pointer; position: relative;
+  transform-origin: bottom center;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+  padding-bottom: 12px;
+}
+.record-card:hover {
+  transform: translateY(-24px) rotate(-4deg);
+  z-index: 10;
+}
+.record-card:hover .record-cover-shadow { opacity: 1; }
+.record-cover {
+  width: 160px; height: 160px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+  background: var(--bg3);
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  position: relative;
+}
+.record-cover-placeholder {
+  width: 160px; height: 160px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #2a2a25 0%, #3d3d38 50%, #1a1a16 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  text-align: center; padding: 14px;
+}
+.record-cover-placeholder .ph-artist { font-size: 10px; color: rgba(255,255,255,.6); margin-bottom: 4px; }
+.record-cover-placeholder .ph-album { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.9); line-height: 1.3; }
+.record-cover-shadow {
+  position: absolute; bottom: 10px; left: 10px; right: 10px; height: 20px;
+  background: rgba(0,0,0,.3); filter: blur(10px); border-radius: 50%;
+  opacity: 0; transition: opacity .3s;
+}
+/* Tooltip is rendered in a fixed portal via JS, not inside the card */
+#record-tooltip {
+  position: fixed;
+  background: rgba(20,20,18,.95); color: #fff;
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 11px;
+  pointer-events: none;
+  z-index: 99999;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0,0,0,.35);
+  max-width: 220px; white-space: normal; text-align: center;
+  transform: translateX(-50%) translateY(-100%);
+  transition: opacity .12s;
+  opacity: 0;
+}
+#record-tooltip.visible { opacity: 1; }
+.record-tooltip-artist { font-size: 10px; color: rgba(255,255,255,.6); margin-bottom: 2px; }
+.record-tooltip-album { font-weight: 600; font-size: 12px; }
+.record-tooltip-plays { font-size: 10px; color: var(--accent2); margin-top: 3px; }
+.record-rank {
+  position: absolute; top: 6px; left: 6px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  font-size: 9px; font-weight: 700; color: rgba(255,255,255,.9);
+  display: flex; align-items: center; justify-content: center;
+}
 
-        .album-title {
-            font-size: 0.9rem;
-            font-weight: bold;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+/* ─── LOADING STATE ─── */
+.shelf-loading {
+  display: flex; align-items: center; gap: 12px;
+  padding: 40px; color: var(--text3); font-size: 13px;
+}
+.spinner {
+  width: 20px; height: 20px; border: 2px solid var(--border);
+  border-top-color: var(--accent2); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-        .album-artist {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 8px;
-        }
+/* ─── STATS BAR ─── */
+.stats-bar {
+  display: flex; gap: 32px; padding: 20px 0;
+  border-bottom: 1px solid var(--border); margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+.stat-item { }
+.stat-val { font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: -1px; line-height: 1; }
+.stat-val sup { font-size: 14px; font-weight: 400; color: var(--text3); }
+.stat-label { font-size: 11px; color: var(--text4); text-transform: uppercase; letter-spacing: .8px; margin-top: 3px; }
 
-        /* Badges */
-        .badge-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-bottom: 8px;
-        }
+/* ─── COLLECTION PAGE ─── */
+.page-header { margin-bottom: 28px; }
+.page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 30px; color: var(--text); letter-spacing: -.3px;
+}
+.page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; }
 
-        .badge {
-            font-size: 0.65rem;
-            padding: 2px 6px;
-            border-radius: 12px;
-            background-color: #444;
-            color: #fff;
-        }
+.collection-controls {
+  display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;
+}
+.search-wrap { flex: 1; min-width: 220px; position: relative; }
+.search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--text4); font-size: 14px; pointer-events: none;
+}
+.search-field {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px 12px 9px 36px;
+  font-family: inherit; font-size: 13px; color: var(--text); outline: none;
+  transition: border-color .15s;
+}
+.search-field:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(200,169,110,.12); }
+.search-field::placeholder { color: var(--text4); }
+.filter-select {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px 12px;
+  font-family: inherit; font-size: 12px; color: var(--text2); outline: none; cursor: pointer;
+}
+.filter-select:focus { border-color: var(--accent2); }
 
-        .badge.format { background-color: #005f73; }
-        .badge.scrobbles { background-color: #9b2226; }
-        .badge.genre { background-color: #ca6702; }
+.collection-count { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
 
-        /* Actions */
-        .action-btn {
-            width: 100%;
-            padding: 6px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: bold;
-            transition: opacity 0.2s;
-        }
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 160px));
+  gap: 20px;
+}
+.album-card {
+  cursor: pointer; transition: transform .2s;
+}
+.album-card:hover { transform: translateY(-4px); }
+.album-art {
+  width: 100%; aspect-ratio: 1; border-radius: 8px;
+  object-fit: cover; background: var(--bg3);
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+  display: block; margin-bottom: 10px;
+}
+.album-art-placeholder {
+  width: 100%; aspect-ratio: 1; border-radius: 8px;
+  background: linear-gradient(135deg, #2a2a25, #3d3d38);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.1); margin-bottom: 10px; padding: 12px; text-align: center;
+}
+.album-art-placeholder span { font-size: 10px; color: rgba(255,255,255,.5); }
+.album-art-placeholder strong { font-size: 11px; color: rgba(255,255,255,.85); margin-top: 4px; display: block; line-height: 1.3; }
+.album-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.album-artist { font-size: 12px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.album-meta { display: flex; gap: 6px; margin-top: 4px; align-items: center; flex-wrap: wrap; }
+.format-badge {
+  font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.fmt-cd { background: #e8f0fe; color: #1a56db; }
+.fmt-mp3 { background: #fef3c7; color: #92400e; }
+.fmt-spotify { background: #d1fae5; color: #065f46; }
+.album-year { font-size: 11px; color: var(--text4); }
+.album-plays { font-size: 11px; color: var(--accent2); font-weight: 500; }
 
-        .btn-add { background-color: var(--primary-color); color: #000; }
-        .btn-remove { background-color: var(--danger-color); color: #fff; }
-        .btn-action { background-color: #333; color: #fff; padding: 8px 16px; border-radius: 20px;}
-        
-        .action-btn:hover, .btn-action:hover { opacity: 0.8; }
+/* ─── STATS PAGE ─── */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--surface); border-radius: var(--radius); padding: 20px;
+  border: 1px solid var(--border);
+}
+.stat-card-val { font-size: 32px; font-weight: 700; color: var(--text); letter-spacing: -1.5px; line-height: 1; }
+.stat-card-unit { font-size: 15px; font-weight: 400; color: var(--text3); }
+.stat-card-label { font-size: 12px; color: var(--text3); margin-top: 5px; text-transform: uppercase; letter-spacing: .6px; font-weight: 500; }
+.stat-card-sub { font-size: 11px; color: var(--text4); margin-top: 3px; }
 
-        .hidden { display: none !important; }
-        
-        /* Empty States */
-        .empty-state {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 40px;
-            color: var(--text-muted);
-            background: var(--surface-color);
-            border-radius: var(--card-radius);
-            border: 1px dashed #444;
-        }
-    </style>
+.chart-card {
+  background: var(--surface); border-radius: var(--radius); padding: 24px;
+  border: 1px solid var(--border); margin-bottom: 16px;
+}
+.chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; }
+.chart-title { font-size: 16px; font-weight: 600; color: var(--text); }
+.chart-meta { font-size: 12px; color: var(--text3); }
+.charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+canvas { max-height: 220px !important; }
+
+/* top artists list */
+.top-list { display: flex; flex-direction: column; gap: 1px; }
+.top-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 11px 16px; background: var(--surface);
+  border-radius: 8px; transition: background .1s; cursor: default;
+}
+.top-row:hover { background: var(--bg2); }
+.top-rank { font-size: 13px; font-weight: 700; color: var(--text4); width: 20px; text-align: right; flex-shrink: 0; }
+.top-art {
+  width: 60px; height: 60px; border-radius: 6px;
+  object-fit: cover; background: var(--bg3); flex-shrink: 0;
+}
+.top-art-placeholder {
+  width: 60px; height: 60px; border-radius: 6px;
+  background: linear-gradient(135deg, #2a2a25, #3d3d38);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.top-info { flex: 1; min-width: 0; }
+.top-name { font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.top-plays { font-size: 13px; font-weight: 600; color: var(--text); text-align: right; flex-shrink: 0; }
+.top-plays-sub { font-size: 10px; color: var(--text4); text-align: right; }
+.top-bar-bg { flex: 1; height: 3px; background: var(--bg3); border-radius: 2px; position: relative; min-width: 60px; max-width: 120px; }
+.top-bar-fill { height: 100%; background: var(--accent2); border-radius: 2px; }
+
+/* ─── WRAPPED PAGE ─── */
+#page-wrapped { transition: background-color .8s ease, color .8s ease; }
+.wrapped-year-select-wrap { margin-bottom: 32px; }
+.wrapped-year-select {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 16px;
+  font-family: inherit; font-size: 15px; font-weight: 600; color: var(--text);
+  outline: none; cursor: pointer; min-width: 140px;
+  transition: border-color .15s;
+}
+.wrapped-year-select:focus { border-color: var(--accent2); }
+
+/* Full-page tint — applied to #page-wrapped via JS */
+.wrapped-tinted { border-radius: 20px; padding: 0 0 40px; transition: background-color .8s; }
+
+/* Wrapped hero — big cover + stats */
+.wrapped-hero-new {
+  display: grid; grid-template-columns: 340px 1fr; gap: 48px;
+  align-items: center; padding: 48px 48px 40px;
+  border-radius: 20px 20px 0 0;
+  position: relative; overflow: hidden;
+  min-height: 380px;
+}
+.wrapped-hero-bg-year {
+  font-family: 'DM Serif Display', serif;
+  font-size: 300px; font-weight: 400; line-height: 1;
+  opacity: .06; position: absolute; bottom: -60px; right: -20px;
+  pointer-events: none; white-space: nowrap;
+}
+.wrapped-cover-hero {
+  width: 280px; height: 280px; border-radius: 12px; object-fit: cover;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  flex-shrink: 0; display: block;
+}
+.wrapped-cover-hero-placeholder {
+  width: 280px; height: 280px; border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 64px; flex-shrink: 0;
+}
+.wrapped-hero-text { position: relative; z-index: 1; }
+.wrapped-hero-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; opacity: .5; margin-bottom: 10px; }
+.wrapped-hero-year-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 72px; font-weight: 400; line-height: .95; margin-bottom: 20px; letter-spacing: -2px;
+}
+.wrapped-hero-top-album { font-size: 22px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; }
+.wrapped-hero-top-artist { font-size: 16px; opacity: .65; margin-bottom: 28px; }
+.wrapped-hero-kpis { display: flex; gap: 36px; flex-wrap: wrap; }
+.wrapped-kpi-val { font-size: 32px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
+.wrapped-kpi-label { font-size: 10px; opacity: .55; text-transform: uppercase; letter-spacing: 1.2px; margin-top: 3px; }
+
+/* Albums grid — hero #1 + smaller below */
+.wrapped-albums-section { padding: 0 48px 40px; }
+.wrapped-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; opacity: .5; margin-bottom: 20px; }
+.wrapped-albums-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  max-width: calc(5 * 130px + 4 * 20px);
+  gap: 20px;
+}
+.wrapped-album-card { cursor: pointer; }
+.wrapped-album-card:hover .wrapped-album-cover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+.wrapped-album-cover {
+  width: 100%; aspect-ratio: 1; border-radius: 8px; object-fit: cover;
+  display: block; margin-bottom: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  transition: transform .25s, box-shadow .25s;
+  background: rgba(255,255,255,.06);
+}
+.wrapped-album-cover-placeholder {
+  width: 100%; aspect-ratio: 1; border-radius: 8px;
+  background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; margin-bottom: 10px;
+}
+.wrapped-album-rank { font-size: 10px; font-weight: 700; opacity: .4; margin-bottom: 2px; }
+.wrapped-album-name { font-size: 13px; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrapped-album-artist { font-size: 11px; opacity: .6; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrapped-album-plays { font-size: 11px; opacity: .5; margin-top: 2px; }
+
+/* Artists section */
+.wrapped-artists-section { padding: 0 48px 48px; }
+.wrapped-artists-list { display: flex; flex-direction: column; gap: 2px; }
+.wrapped-artist-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px; border-radius: 8px;
+  transition: background .15s; cursor: default;
+}
+.wrapped-artist-row:hover { background: rgba(255,255,255,.07); }
+.wrapped-artist-rank { font-size: 13px; font-weight: 700; opacity: .35; width: 22px; text-align: right; flex-shrink: 0; }
+.wrapped-artist-img {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  background: rgba(255,255,255,.08); flex-shrink: 0;
+}
+.wrapped-artist-img-placeholder {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.wrapped-artist-name { flex: 1; font-size: 14px; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrapped-artist-plays { font-size: 13px; font-weight: 600; opacity: .7; flex-shrink: 0; }
+
+/* First / last scrobble */
+.wrapped-scrobbles-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 48px 48px; }
+.wrapped-scrobble-card {
+  background: rgba(255,255,255,.07); border-radius: 12px; padding: 18px;
+}
+.wrapped-scrobble-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; opacity: .5; margin-bottom: 10px; }
+.wrapped-scrobble-track { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.wrapped-scrobble-sub { font-size: 12px; opacity: .6; margin-top: 3px; }
+
+/* ─── THIS WEEK PAGE ─── */
+.week-page-header { margin-bottom: 32px; }
+.week-page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 30px; color: var(--text); letter-spacing: -.3px;
+}
+.week-page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; }
+
+/* Filmstrip container — clips overflow, drives scroll via transform */
+.week-strip-outer {
+  position: relative;
+  overflow: hidden;
+  padding: 40px 0 32px;
+  cursor: default;
+  user-select: none;
+}
+/* Edge cursor zones — left/right 20% of container */
+.week-strip-outer::before,
+.week-strip-outer::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; width: 18%; z-index: 10;
+  pointer-events: none;
+}
+.week-strip-outer::before { left: 0;  background: linear-gradient(to right, rgba(250,250,248,.7), transparent); }
+.week-strip-outer::after  { right: 0; background: linear-gradient(to left,  rgba(250,250,248,.7), transparent); }
+
+/* The inner track — width set by JS */
+.week-strip-track {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  will-change: transform;
+  transition: transform 0s; /* JS drives this smoothly via RAF */
+}
+
+/* Each album tile in the strip */
+.week-strip-item {
+  flex-shrink: 0;
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: filter .3s ease, opacity .3s ease, transform .3s ease;
+}
+.week-strip-item.centre {
+  filter: none;
+  opacity: 1;
+  transform: scale(1);
+  z-index: 2;
+}
+.week-strip-item.side {
+  filter: blur(2.5px);
+  opacity: 0.45;
+  transform: scale(0.88);
+}
+.week-strip-cover {
+  width: 160px; height: 160px;
+  border-radius: 10px; object-fit: cover;
+  display: block;
+  box-shadow: 0 8px 28px rgba(0,0,0,.2);
+  background: var(--bg3);
+}
+.week-strip-cover-placeholder {
+  width: 160px; height: 160px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2a2a25, #3d3d38);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 56px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.2);
+}
+
+/* Info panel — always shows centre album */
+.week-info-panel {
+  text-align: center;
+  padding: 0 20px 40px;
+  min-height: 90px;
+}
+.week-info-rank {
+  font-size: 11px; font-weight: 600; color: var(--text4);
+  text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px;
+}
+.week-info-album {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24px; color: var(--text); letter-spacing: -.3px;
+  line-height: 1.2; margin-bottom: 4px;
+}
+.week-info-artist {
+  font-size: 14px; color: var(--text3); margin-bottom: 8px;
+}
+.week-info-plays {
+  font-size: 13px; font-weight: 600; color: var(--accent2);
+}
+
+/* ─── DISCOVER / GAPS PAGE ─── */
+.discover-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.discover-card {
+  background: var(--surface); border-radius: var(--radius); padding: 24px;
+  border: 1px solid var(--border);
+}
+.discover-card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.gaps-section-count {
+  display: inline-block; background: var(--bg3); color: var(--text3);
+  border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 600;
+  margin-left: 6px; vertical-align: middle;
+}
+.discover-card-sub { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+
+/* My Current Selection banner */
+.selection-banner {
+  background: var(--text); color: #fff; border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap;
+}
+.selection-banner-left { display: flex; align-items: center; gap: 12px; }
+.selection-banner-count {
+  font-size: 28px; font-weight: 700; letter-spacing: -1px; line-height: 1;
+}
+.selection-banner-label { font-size: 13px; opacity: .65; margin-top: 2px; }
+.selection-covers { display: flex; gap: -4px; }
+.selection-cover-thumb {
+  width: 36px; height: 36px; border-radius: 5px; object-fit: cover;
+  margin-left: -6px; border: 2px solid var(--text);
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+}
+.selection-cover-thumb:first-child { margin-left: 0; }
+.toggle-switch {
+  display: inline-flex; align-items: center;
+  width: 44px; height: 24px; border-radius: 12px;
+  background: var(--border); cursor: pointer;
+  transition: background .2s; flex-shrink: 0; position: relative;
+}
+.toggle-switch.on { background: var(--text); }
+.toggle-knob {
+  position: absolute; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle-switch.on .toggle-knob { transform: translateX(20px); }
+
+
+  background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: var(--radius-sm); padding: 8px 14px;
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.btn-clear-selection:hover { background: rgba(255,255,255,.25); }
+
+/* Nostalgia section */
+.nostalgia-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px;
+}
+.nostalgia-card { cursor: pointer; }
+.nostalgia-cover {
+  width: 100%; aspect-ratio: 1; border-radius: 8px; object-fit: cover;
+  display: block; margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+.nostalgia-cover-placeholder {
+  width: 100%; aspect-ratio: 1; border-radius: 8px;
+  background: linear-gradient(135deg, #2a2a25, #3d3d38);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin-bottom: 8px;
+}
+.nostalgia-name { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nostalgia-artist { font-size: 11px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* To Listen checkbox on album cards */
+.album-card { position: relative; }
+.album-select-cb {
+  position: absolute; top: 8px; right: 8px;
+  width: 22px; height: 22px; border-radius: 6px;
+  background: rgba(255,255,255,.92); border: 2px solid var(--border);
+  display: none; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 2; transition: all .15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
+.album-card:hover .album-select-cb { display: flex; }
+.album-select-cb.checked { display: flex; background: var(--text); border-color: var(--text); color: #fff; }
+.album-select-cb.checked::after { content: '✓'; font-size: 12px; font-weight: 700; }
+.album-card.selected .album-select-cb { display: flex; }
+
+/* ─── STATS PERIOD FILTER ─── */
+.stats-period-row {
+  display: flex; gap: 4px; margin-bottom: 24px;
+  background: var(--bg3); padding: 3px; border-radius: 10px;
+  width: fit-content; flex-wrap: wrap;
+}
+.period-btn {
+  padding: 7px 16px; font-size: 13px; font-weight: 500; color: var(--text3);
+  cursor: pointer; border: none; background: none; border-radius: 8px;
+  transition: all .15s; font-family: inherit; white-space: nowrap;
+}
+.period-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.period-btn:hover:not(.active) { color: var(--text2); }
+
+/* ─── LOADING OVERLAY ─── */
+.page-loading {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 80px 20px; gap: 16px; color: var(--text3);
+}
+.load-spinner {
+  width: 32px; height: 32px; border: 2px solid var(--border);
+  border-top-color: var(--accent2); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.load-text { font-size: 13px; }
+
+/* ─── MOBILE ─── */
+@media (max-width: 768px) {
+  .content { padding: 16px; }
+  .top-nav { display: none; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .charts-2col { grid-template-columns: 1fr; }
+  .wrapped-grid { grid-template-columns: 1fr; }
+  .week-grid { grid-template-columns: 1fr; }
+  .gaps-grid { grid-template-columns: 1fr; }
+  .home-title { font-size: 26px; }
+  .shelf-records { gap: 8px; }
+  .record-card { width: 100px; }
+  .record-cover, .record-cover-placeholder { width: 100px; height: 100px; }
+  .mobile-nav {
+    display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,.95); backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border); padding: 8px 0 20px;
+    z-index: 200; justify-content: space-around;
+  }
+  .mobile-nav-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10px; color: var(--text3); cursor: pointer; padding: 6px 10px;
+    border: none; background: none; font-family: inherit; transition: color .15s;
+  }
+  .mobile-nav-btn.active { color: var(--text); }
+  .mobile-nav-icon { font-size: 20px; }
+  .content { padding-bottom: 80px; }
+}
+@media (min-width: 769px) {
+  .mobile-nav { display: none; }
+}
+
+/* ─── UTIL ─── */
+.hidden { display: none !important; }
+.text-muted { color: var(--text3); }
+.text-accent { color: var(--accent2); }
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+.mb-16 { margin-bottom: 16px; }
+.error-msg {
+  background: #fff5f5; border: 1px solid #fecaca; border-radius: var(--radius-sm);
+  padding: 12px 16px; font-size: 13px; color: #dc2626; margin-top: 12px;
+}
+</style>
 </head>
 <body>
+<div id="record-tooltip"></div>
 
-    <header>
-        <div class="tabs">
-            <button id="tab-collection" onclick="switchTab('collection')">My Collection</button>
-            <button id="tab-discover" class="active" onclick="switchTab('discover')">Discover</button>
+<!-- ─── SETUP SCREEN ─── -->
+<div id="setup-screen">
+  <div class="setup-logo">
+    <div class="setup-wordmark">VINYL<span style="color:var(--accent2)">.</span></div>
+    <div class="setup-tagline">Your music, beautifully tracked</div>
+  </div>
+  <div class="setup-card">
+    <div class="setup-title">Connect your data</div>
+    <div class="setup-desc">Your Last.fm username is pre-filled. Choose whether to load your collection, then click to continue.</div>
+
+    <div class="field-group">
+      <label class="field-label">Last.fm Username</label>
+      <input class="field" id="input-username" type="text" placeholder="your username" value="asimplemind">
+    </div>
+
+    <div class="field-group" id="csv-toggle-row">
+      <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Load my collection</span>
+        <span class="toggle-switch" id="collection-toggle" onclick="toggleCollectionField()">
+          <span class="toggle-knob"></span>
+        </span>
+      </label>
+      <div id="csv-field-wrap" style="display:none;margin-top:10px">
+        <input class="field" id="input-csv-url" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
+        <div class="field-hint">Your Google Sheets "Publish to web" CSV URL.</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="initDashboard()">Open Dashboard →</button>
+    <div id="setup-error"></div>
+  </div>
+  <div style="font-size:11px;color:var(--text4);letter-spacing:1px;text-transform:uppercase">v1.3.0</div>
+</div>
+
+<!-- ─── DASHBOARD ─── -->
+<div id="dashboard">
+  <div class="top-bar">
+    <div class="top-logo" onclick="navigate('home')">VINYL<span>.</span></div>
+    <div class="top-nav">
+      <button class="nav-btn active" data-page="home" onclick="navigate('home')">Home</button>
+      <button class="nav-btn" data-page="thisweek" onclick="navigate('thisweek')">This Week</button>
+      <button class="nav-btn" data-page="collection" onclick="navigate('collection')">My Collection</button>
+      <button class="nav-btn" data-page="stats" onclick="navigate('stats')">Stats</button>
+      <button class="nav-btn" data-page="wrapped" onclick="navigate('wrapped')">Wrapped</button>
+      <button class="nav-btn" data-page="gaps" onclick="navigate('gaps')">Discover</button>
+    </div>
+    <div class="top-right-wrap">
+      <button class="nav-btn" onclick="refreshCurrentPage()" title="Refresh this page's data" style="font-size:11px;padding:5px 10px">↻ Refresh</button>
+      <button class="nav-btn" onclick="clearAllCache()" title="Clear all cached data" style="font-size:11px;padding:5px 10px;color:var(--text4)">Clear cache</button>
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar-initials">?</div>
+        <span id="user-display-name">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- HOME PAGE -->
+    <div class="page active" id="page-home">
+      <div class="home-header">
+        <div class="home-title">Your record<br><em>collection.</em></div>
+        <div class="home-subtitle" id="home-subtitle">Loading your listening history…</div>
+      </div>
+      <div class="stats-bar" id="stats-bar">
+        <div class="stat-item"><div class="stat-val" id="stat-total-scrobbles">—</div><div class="stat-label">Total scrobbles</div></div>
+        <div class="stat-item"><div class="stat-val" id="stat-since">—</div><div class="stat-label">Scrobbling since</div></div>
+        <div class="stat-item"><div class="stat-val" id="stat-artists">—</div><div class="stat-label">Artists</div></div>
+        <div class="stat-item"><div class="stat-val" id="stat-collection">—</div><div class="stat-label">Albums owned</div></div>
+      </div>
+
+      <div class="shelf-section">
+        <div class="shelf-label">All-time top 10</div>
+        <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-alltime"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
+      </div>
+
+      <div class="shelf-section">
+        <div class="shelf-label">This month</div>
+        <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-1month"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
+      </div>
+
+      <div class="shelf-section">
+        <div class="shelf-label">Last 52 weeks</div>
+        <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-52w"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
+      </div>
+
+      <div class="shelf-section">
+        <div class="shelf-label">Last 5 years · excluding past 52 weeks</div>
+        <div class="shelf-scroll-wrap"><div class="shelf-records" id="shelf-5y"><div class="shelf-loading"><div class="spinner"></div> Loading…</div></div></div>
+      </div>
+    </div>
+
+    <!-- COLLECTION PAGE -->
+    <div class="page" id="page-collection">
+      <div class="page-header">
+        <div class="page-title">My Collection</div>
+        <div class="page-subtitle" id="collection-subtitle">Your full album library</div>
+      </div>
+      <div class="collection-controls">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input class="search-field" id="collection-search" type="text" placeholder="Search artist or album…" oninput="filterCollection()">
         </div>
+        <select class="filter-select" id="filter-format" onchange="filterCollection()">
+          <option value="">All formats</option>
+          <option value="CD">CD</option>
+          <option value="mp3">MP3</option>
+          <option value="Spotify">Spotify</option>
+        </select>
+        <select class="filter-select" id="filter-decade" onchange="filterCollection()">
+          <option value="">All decades</option>
+        </select>
+        <select class="filter-select" id="filter-sort" onchange="filterCollection()">
+          <option value="album">Album</option>
+          <option value="artist_album">Artist / Album</option>
+          <option value="artist_year_album" selected>Artist / Year / Album</option>
+          <option value="year">Year</option>
+          <option value="plays">Most Played</option>
+          <option value="rating">My Rating</option>
+        </select>
+        <button class="btn-sm" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle sort direction" style="padding:8px 12px;font-size:13px;min-width:36px">↑</button>
+      </div>
+      <div class="collection-count" id="collection-count"></div>
+      <div class="collection-grid" id="collection-grid"></div>
+    </div>
+
+    <!-- STATS PAGE -->
+    <div class="page" id="page-stats">
+      <div class="page-header">
+        <div class="page-title">Stats</div>
+        <div class="page-subtitle">Your listening history at a glance</div>
+      </div>
+      <div class="stats-period-row">
+        <button class="period-btn active" data-period="overall" onclick="setStatsPeriod('overall')">All time</button>
+        <button class="period-btn" data-period="12month" onclick="setStatsPeriod('12month')">Last 365 days</button>
+        <button class="period-btn" data-period="3month" onclick="setStatsPeriod('3month')">Last 90 days</button>
+        <button class="period-btn" data-period="1month" onclick="setStatsPeriod('1month')">Last 30 days</button>
+        <button class="period-btn" data-period="7day" onclick="setStatsPeriod('7day')">Last 7 days</button>
+      </div>
+      <div class="stats-grid" id="stats-cards"></div>
+      <div style="margin-top:24px;display:flex;flex-direction:column;gap:16px">
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="chart-header"><div class="chart-title">Top albums</div><div class="chart-meta" id="top-albums-period-label">all time</div></div>
+          <div class="collection-grid" id="top-albums-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,130px));gap:14px;margin-top:4px"></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="chart-header"><div class="chart-title">Top artists</div><div class="chart-meta" id="top-artists-period-label">all time</div></div>
+          <div class="top-list" id="top-artists-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WRAPPED PAGE -->
+    <div class="page" id="page-wrapped">
+      <div class="page-header" style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
-            <!-- For testing logic without hitting real APIs immediately -->
-            <button class="btn-action" onclick="loadDemoData()">Load Demo Data</button>
+          <div class="page-title">Wrapped</div>
+          <div class="page-subtitle">A year-by-year portrait of your listening</div>
         </div>
-    </header>
+        <select class="wrapped-year-select" id="wrapped-year-select" onchange="loadWrappedYear(parseInt(this.value))"></select>
+      </div>
+      <div id="wrapped-panels"></div>
+    </div>
 
-    <!-- MY COLLECTION TAB (Placeholder) -->
-    <main id="view-collection" class="hidden">
-        <h2 class="section-title">💿 Full Collection</h2>
-        <p style="color: var(--text-muted)">Your Google Sheets collection goes here.</p>
-        <div id="collection-grid" class="album-grid" style="margin-top: 20px;"></div>
-    </main>
+    <!-- THIS WEEK PAGE -->
+    <div class="page" id="page-thisweek">
+      <div class="week-page-header">
+        <div class="week-page-title">This Week</div>
+        <div class="week-page-subtitle" id="week-subtitle">Your listening since Monday</div>
+      </div>
+      <div id="thisweek-content">
+        <div class="page-loading"><div class="load-spinner"></div><div class="load-text">Fetching this week's data…</div></div>
+      </div>
+    </div>
 
-    <!-- DISCOVER TAB -->
-    <main id="view-discover">
-        
-        <!-- ZONE 1: My Listening Queue -->
-        <h2 class="section-title">🎧 My Listening Queue
-            <button class="btn-action" style="font-size:0.7rem; padding: 4px 10px" onclick="clearQueue()">Clear All</button>
-        </h2>
-        <div id="queue-grid" class="album-grid">
-            <div class="empty-state">Your queue is empty. Add albums from your collection or recommendations.</div>
+    <!-- DISCOVER PAGE -->
+    <div class="page" id="page-gaps">
+      <div class="page-header">
+        <div class="page-title">Discover</div>
+        <div class="page-subtitle">Rediscover your collection</div>
+      </div>
+      <div id="gaps-content">
+        <div class="page-loading"><div class="load-spinner"></div><div class="load-text">Analysing your collection…</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Mobile nav -->
+  <div class="mobile-nav">
+    <button class="mobile-nav-btn active" data-page="home" onclick="navigate('home')"><span class="mobile-nav-icon">🏠</span>Home</button>
+    <button class="mobile-nav-btn" data-page="thisweek" onclick="navigate('thisweek')"><span class="mobile-nav-icon">📅</span>Week</button>
+    <button class="mobile-nav-btn" data-page="collection" onclick="navigate('collection')"><span class="mobile-nav-icon">📦</span>Collection</button>
+    <button class="mobile-nav-btn" data-page="stats" onclick="navigate('stats')"><span class="mobile-nav-icon">📊</span>Stats</button>
+    <button class="mobile-nav-btn" data-page="wrapped" onclick="navigate('wrapped')"><span class="mobile-nav-icon">🎁</span>Wrapped</button>
+    <button class="mobile-nav-btn" data-page="gaps" onclick="navigate('gaps')"><span class="mobile-nav-icon">🔍</span>Discover</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   VINYL DASHBOARD — CORE
+   ═══════════════════════════════════════════════ */
+
+const API_KEY = '1f64eddc10456202a49cef0dfd155c88';
+const BASE = 'https://ws.audioscrobbler.com/2.0/';
+
+let STATE = {
+  username: '',
+  userInfo: null,
+  collection: [],       // from CSV
+  topAlbumsAllTime: [], // Last.fm
+  topAlbums1month: [],
+  topAlbums52w: [],
+  topAlbums5y: [],
+  topArtists: [],
+  topAlbumsStats: [],
+  yearlyScrobbles: {},  // { year: count }
+  wrappedCache: {},     // { year: data }
+  weekData: null,
+  currentPage: 'home',
+  collectionLoaded: false,
+  statsLoaded: false,
+  wrappedLoaded: false,
+  weekLoaded: false,
+  gapsLoaded: false,
+  toListenSet: new Set(),    // keys of albums in To Listen list
+  toListenItems: {},         // key -> { artist, album, coverUrl } for display
+};
+
+/* ══════════════════════════════════════════════
+   CACHE SYSTEM (localStorage, mirrors Strava pattern)
+   ══════════════════════════════════════════════
+   Keys:
+     vinyl_user          → { username, userInfo, lastUpdated }
+     vinyl_yearly        → { [year]: count, lastUpdated, lastYear }
+     vinyl_top_overall   → { albums:[], artists:[], lastUpdated }
+     vinyl_top_12month   → { albums:[], artists:[], lastUpdated }
+     vinyl_top_3month    → { albums:[], artists:[], lastUpdated }
+     vinyl_top_1month    → { albums:[], artists:[], lastUpdated }
+     vinyl_top_7day      → { albums:[], artists:[], lastUpdated }
+     vinyl_wrapped_YEAR  → { ...wrappedData, lastUpdated }
+   ══════════════════════════════════════════════ */
+
+const CACHE_VERSION = 'v2';
+function cacheKey(k) { return `vinyl_${k}_${CACHE_VERSION}`; }
+
+function cLoad(k) {
+  try {
+    const raw = localStorage.getItem(cacheKey(k));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+function cSave(k, data) {
+  try { localStorage.setItem(cacheKey(k), JSON.stringify(data)); } catch(e) {}
+}
+function cClear() {
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('vinyl_'));
+  keys.forEach(k => localStorage.removeItem(k));
+}
+
+// How stale is this cache? Returns age in minutes.
+function cAge(data) {
+  if (!data?.lastUpdated) return Infinity;
+  return (Date.now() - data.lastUpdated) / 60000;
+}
+
+// Short-lived periods refresh more often; all-time/yearly refresh once per day
+const STALE_MINUTES = {
+  '7day': 60,       // 1 hour
+  '1month': 360,    // 6 hours
+  '3month': 720,    // 12 hours
+  '12month': 1440,  // 1 day
+  'overall': 1440,  // 1 day
+  'yearly': 1440,   // 1 day
+  'wrapped': 10080, // 1 week (past years never change)
+  'user': 60,
+};
+
+function isStale(key, period = 'overall') {
+  const data = cLoad(key);
+  return !data || cAge(data) > (STALE_MINUTES[period] ?? 1440);
+}
+
+/* ─── SYNC STATUS BAR ─── */
+function showSyncBar(msg, pct = null) {
+  let bar = document.getElementById('sync-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'sync-bar';
+    bar.style.cssText = `position:fixed;bottom:0;left:0;right:0;background:rgba(26,26,24,.95);
+      color:#fff;font-size:12px;padding:10px 20px;display:flex;align-items:center;gap:12px;
+      z-index:99998;backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,.1)`;
+    bar.innerHTML = `<div id="sync-spinner" style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);
+      border-top-color:#c8a96e;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0"></div>
+      <span id="sync-msg"></span>
+      <div style="flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin-left:8px">
+        <div id="sync-prog" style="height:100%;background:#c8a96e;border-radius:2px;transition:width .4s;width:0%"></div>
+      </div>`;
+    document.body.appendChild(bar);
+  }
+  document.getElementById('sync-msg').textContent = msg;
+  if (pct !== null) document.getElementById('sync-prog').style.width = pct + '%';
+  bar.style.display = 'flex';
+}
+function hideSyncBar(finalMsg) {
+  const bar = document.getElementById('sync-bar');
+  if (!bar) return;
+  if (finalMsg) {
+    document.getElementById('sync-msg').textContent = finalMsg;
+    document.getElementById('sync-spinner').style.borderTopColor = '#4a7c59';
+    document.getElementById('sync-prog').style.width = '100%';
+    setTimeout(() => { bar.style.display = 'none'; }, 2500);
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+
+
+/* ─── LAST.FM ARRAY NORMALISER ─── */
+// Last.fm returns a plain object (not array) when there's only 1 result.
+// Always wrap with this before iterating.
+function lfmArr(val) {
+  if (!val) return [];
+  return Array.isArray(val) ? val : [val];
+}
+
+/* ─── API HELPER ─── */
+async function lfm(method, params = {}) {
+  const url = new URL(BASE);
+  url.searchParams.set('method', method);
+  url.searchParams.set('api_key', API_KEY);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('user', STATE.username);
+  for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function lfmPaged(method, resultKey, subKey, params = {}, maxPages = 1) {
+  const results = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const data = await lfm(method, { ...params, page, limit: 200 });
+    const items = data?.[resultKey]?.[subKey] || [];
+    results.push(...items);
+    const total = parseInt(data?.[resultKey]?.['@attr']?.totalPages || 1);
+    if (page >= total) break;
+  }
+  return results;
+}
+
+/* ─── CSV PARSER ─── */
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''));
+  return lines.slice(1).map(line => {
+    // Handle quoted fields
+    const cols = [];
+    let cur = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; continue; }
+      if (line[i] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; continue; }
+      cur += line[i];
+    }
+    cols.push(cur.trim());
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = cols[i] || '');
+    return obj;
+  }).filter(r => r.artist || r.album);
+}
+
+/* ─── FETCH CSV FROM URL ─── */
+async function fetchCSV(url) {
+  // Try allorigins /get (returns JSON wrapper so we can detect failures)
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
+    if (res.ok) {
+      const json = await res.json();
+      // allorigins returns contents:null when the upstream fetch failed
+      if (json.contents && json.status?.http_code === 200) {
+        return json.contents;
+      }
+      console.warn('allorigins returned null or non-200:', json.status);
+    }
+  } catch(e) {
+    console.warn('allorigins proxy failed:', e.message);
+  }
+
+  // Fallback: corsproxy.io
+  try {
+    const fallbackUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    const res = await fetch(fallbackUrl);
+    if (res.ok) return res.text();
+  } catch(e) {
+    console.warn('corsproxy.io fallback failed:', e.message);
+  }
+
+  throw new Error('Could not fetch collection — both CORS proxies failed. Check your Google Sheets "Publish to web" URL is still active.');
+}
+
+/* ─── INIT ─── */
+async function initDashboard() {
+  const username = document.getElementById('input-username').value.trim();
+  // CSV URL is fetched later after Last.fm connection succeeds
+  if (!username) { showSetupError('Please enter your Last.fm username'); return; }
+
+  // Set username BEFORE any API call so lfm() can use it
+  STATE.username = username;
+
+  document.getElementById('setup-error').innerHTML = '<div class="error-msg">Connecting to Last.fm…</div>';
+
+  try {
+    const userInfo = await lfm('user.getInfo');
+    if (userInfo.error) throw new Error(userInfo.message);
+    if (!userInfo.user) throw new Error('No user data returned');
+    STATE.userInfo = userInfo.user;
+
+    // Load collection if toggle is on
+    const collectionOn = document.getElementById('collection-toggle').classList.contains('on');
+    const csvUrl = collectionOn ? document.getElementById('input-csv-url').value.trim() : '';
+    if (csvUrl) {
+      try {
+        const csvText = await fetchCSV(csvUrl);
+        STATE.collection = parseCSV(csvText);
+        if (STATE.collection.length === 0) {
+          console.warn('CSV parsed but returned 0 albums — check column headers match: Artist, Album, Year, Format, My Rating');
+        }
+        localStorage.setItem('vinyl_csv_url', csvUrl);
+      } catch(csvErr) {
+        console.error('Could not load collection CSV:', csvErr);
+        // Show a non-fatal warning in the dashboard
+        STATE.collectionError = csvErr.message;
+      }
+    }
+
+    // Save username to localStorage (survives tab/browser close)
+    localStorage.setItem('vinyl_username', username);
+
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+
+    updateUserChip();
+    loadHomeData();
+  } catch(e) {
+    STATE.username = ''; // reset on failure
+    showSetupError(`Could not connect to Last.fm: ${e.message || 'Unknown error'}. Check your username and try again.`);
+    console.error(e);
+  }
+}
+
+function toggleCollectionField() {
+  const tog = document.getElementById('collection-toggle');
+  const wrap = document.getElementById('csv-field-wrap');
+  const isOn = tog.classList.toggle('on');
+  wrap.style.display = isOn ? 'block' : 'none';
+  localStorage.setItem('vinyl_collection_toggle', isOn ? 'on' : 'off');
+}
+
+function showSetupError(msg) {
+  document.getElementById('setup-error').innerHTML = `<div class="error-msg">${msg}</div>`;
+}
+
+function updateUserChip() {
+  const u = STATE.userInfo;
+  if (!u) return;
+  const name = u.realname || u.name;
+  document.getElementById('user-display-name').textContent = u.name;
+  document.getElementById('user-avatar-initials').textContent = (u.name||'?')[0].toUpperCase();
+}
+
+/* ─── NAVIGATION ─── */
+function navigate(page) {
+  STATE.currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelectorAll('.nav-btn, .mobile-nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === page);
+  });
+  if (page === 'collection' && !STATE.collectionLoaded) renderCollection();
+  if (page === 'stats' && !STATE.statsLoaded) loadStats();
+  if (page === 'wrapped' && !STATE.wrappedLoaded) loadWrapped();
+  if (page === 'thisweek' && !STATE.weekLoaded) loadThisWeek();
+  if (page === 'gaps' && !STATE.gapsLoaded) loadGaps();
+  else if (page === 'gaps' && STATE.gapsLoaded) renderDiscoverSelection(); // always live-update selection
+}
+
+function refreshCurrentPage() {
+  const p = STATE.currentPage;
+  // Force re-fetch by resetting loaded flags and clearing page-specific cache
+  if (p === 'home') {
+    try { localStorage.removeItem(cacheKey('home_albums')); } catch(e) {}
+    loadHomeData();
+  } else if (p === 'stats') {
+    STATE.statsLoaded = false;
+    loadStats();
+  } else if (p === 'wrapped') {
+    // Only clear current year cache (past years are permanent)
+    const thisYear = new Date().getFullYear();
+    try { localStorage.removeItem(cacheKey(`wrapped_${thisYear}`)); } catch(e) {}
+    delete STATE.wrappedCache[thisYear];
+    loadWrappedYear(thisYear);
+  } else if (p === 'thisweek') {
+    STATE.weekLoaded = false;
+    loadThisWeek();
+  } else if (p === 'gaps') {
+    STATE.gapsLoaded = false;
+    loadGaps();
+  }
+}
+
+function clearAllCache() {
+  if (!confirm('Clear all cached Last.fm data?\n\nThe dashboard will re-fetch everything from scratch next time you open each page.')) return;
+  cClear();
+  STATE.statsLoaded = false;
+  STATE.wrappedLoaded = false;
+  STATE.weekLoaded = false;
+  STATE.gapsLoaded = false;
+  STATE.wrappedCache = {};
+  STATE.yearlyScrobbles = {};
+  alert('Cache cleared. Refresh the page to reload everything.');
+}
+
+/* ══════════════════════════════════════════════
+   HOME PAGE
+   ══════════════════════════════════════════════ */
+async function loadHomeData() {
+  const u = STATE.userInfo;
+  document.getElementById('home-subtitle').textContent =
+    `${u.name} · ${parseInt(u.playcount).toLocaleString()} scrobbles since ${new Date(parseInt(u.registered?.unixtime||0)*1000).getFullYear()}`;
+  document.getElementById('stat-total-scrobbles').textContent = parseInt(u.playcount).toLocaleString();
+  document.getElementById('stat-since').textContent = new Date(parseInt(u.registered?.unixtime||0)*1000).getFullYear();
+  document.getElementById('stat-artists').textContent = parseInt(u.artist_count||0).toLocaleString();
+  document.getElementById('stat-collection').textContent = STATE.collection.length > 0 ? STATE.collection.length.toLocaleString() : '—';
+
+  try {
+    // Try cache first for instant render
+    const cachedHome = cLoad('home_albums');
+    if (cachedHome && !isStale('home_albums', 'overall')) {
+      STATE.topAlbumsAllTime = cachedHome.allTime  || [];
+      STATE.topAlbums1month  = cachedHome.month    || [];
+      STATE.topAlbums52w     = cachedHome.w52      || [];
+      STATE.topAlbums5y      = cachedHome.overall  || [];
+      renderShelves();
+      return; // cache is fresh, nothing more to do
+    }
+
+    // Cache stale or missing — fetch from Last.fm
+    showSyncBar('Loading your top albums…', 10);
+    const [allTime, month, w52, overall] = await Promise.all([
+      lfm('user.getTopAlbums', { period: 'overall', limit: 50 }),
+      lfm('user.getTopAlbums', { period: '1month', limit: 50 }),
+      lfm('user.getTopAlbums', { period: '12month', limit: 500 }),
+      lfm('user.getTopAlbums', { period: 'overall', limit: 200 }),
+    ]);
+    STATE.topAlbumsAllTime = lfmArr(allTime.topalbums?.album);
+    STATE.topAlbums1month  = lfmArr(month.topalbums?.album);
+    STATE.topAlbums52w     = lfmArr(w52.topalbums?.album);
+    STATE.topAlbums5y      = lfmArr(overall.topalbums?.album);
+
+    cSave('home_albums', {
+      allTime:  STATE.topAlbumsAllTime,
+      month:    STATE.topAlbums1month,
+      w52:      STATE.topAlbums52w,
+      overall:  STATE.topAlbums5y,
+      lastUpdated: Date.now()
+    });
+    hideSyncBar('✓ Shelves loaded');
+    renderShelves();
+  } catch(e) {
+    hideSyncBar();
+    console.error('Home load error:', e);
+    ['shelf-alltime','shelf-1month','shelf-52w','shelf-5y'].forEach(id => {
+      document.getElementById(id).innerHTML = '<div style="padding:20px;color:var(--text3);font-size:13px;">Could not load data</div>';
+    });
+  }
+}
+
+function normaliseAlbumName(name) {
+  // Strip parenthetical/bracketed suffixes containing edition/remastered/remaster/mix
+  // e.g. "(Limited Edition)", "[2024 Remaster]", "(Deluxe Mix)" → clean title
+  return (name || '')
+    .replace(/\s*[\(\[][^\)\]]*\b(edition|remastered|remaster|mix)\b[^\)\]]*[\)\]]/gi, '')
+    .replace(/\s+$/, '')
+    .trim();
+}
+
+function albumKey(a) {
+  const artist = (a.artist?.name || a.artist || '').toLowerCase();
+  const album  = normaliseAlbumName(a.name || a.album || '').toLowerCase();
+  return `${artist}::${album}`;
+}
+
+function renderShelves() {
+  // Shelf 1: All-time top 10
+  const shelf1Keys = new Set();
+  const shelf1 = pickTop10(STATE.topAlbumsAllTime.slice(0,50), shelf1Keys);
+
+  // Shelf 2: This month (dedupe against all-time)
+  const shelf2Keys = new Set(shelf1Keys);
+  const shelf2 = pickTop10(STATE.topAlbums1month.slice(0,50), shelf2Keys);
+
+  // Shelf 3: Last 52 weeks (dedupe against all-time + month)
+  const shelf3Keys = new Set([...shelf1Keys, ...shelf2Keys]);
+  const shelf3 = pickTop10(STATE.topAlbums52w.slice(0,50), shelf3Keys);
+
+  // Shelf 4: Overall minus 52w, to approximate 5y-excl-52w
+  const w52Keys = new Set(STATE.topAlbums52w.slice(0,50).map(albumKey));
+  const filtered5y = STATE.topAlbums5y.filter(a => !w52Keys.has(albumKey(a)));
+  const shelf4Keys = new Set([...shelf1Keys, ...shelf2Keys, ...shelf3Keys]);
+  const shelf4 = pickTop10(filtered5y, shelf4Keys);
+
+  renderShelf('shelf-alltime', shelf1);
+  renderShelf('shelf-1month', shelf2.length ? shelf2 : null, 'Not enough listening data this month yet');
+  renderShelf('shelf-52w', shelf3);
+  renderShelf('shelf-5y', shelf4);
+}
+
+function pickTop10(albums, usedKeys) {
+  const result = [];
+  for (const a of albums) {
+    if (result.length >= 10) break;
+    const k = albumKey(a);
+    if (!usedKeys.has(k)) { result.push(a); usedKeys.add(k); }
+  }
+  return result;
+}
+
+function renderShelf(containerId, albums, emptyMsg = 'Not enough data yet') {
+  const el = document.getElementById(containerId);
+  if (!albums || !albums.length) { el.innerHTML = `<div style="padding:20px;color:var(--text3);font-size:13px;">${emptyMsg}</div>`; return; }
+  el.innerHTML = albums.map((a, i) => {
+    const artist = a.artist?.name || a.artist || '';
+    const name   = a.name || '';
+    const plays  = parseInt(a.playcount||0).toLocaleString();
+    const img    = lfmArr(a.image).find(im => im.size === 'large')?.['#text'] || '';
+    const ttData = encodeURIComponent(JSON.stringify({ artist, name, plays }));
+    const imgHtml = img
+      ? `<img class="record-cover" src="${img}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      : '';
+    const phHtml = `<div class="record-cover-placeholder" ${img ? 'style="display:none"' : ''}><div class="ph-artist">${escHtml(artist)}</div><div class="ph-album">${escHtml(name)}</div></div>`;
+    return `<div class="record-card"
+        data-tt="${ttData}"
+        onmouseenter="showRecordTooltip(event,this)"
+        onmouseleave="hideRecordTooltip()"
+        onclick="openAlbumDetail('${escHtml(artist).replace(/'/g,"&#39;")}','${escHtml(name).replace(/'/g,"&#39;")}')"
+      >
+        <div class="record-rank">${i+1}</div>
+        ${imgHtml}${phHtml}
+        <div class="record-cover-shadow"></div>
+      </div>`;
+  }).join('');
+}
+
+// Global floating tooltip
+function showRecordTooltip(e, card) {
+  const tt = document.getElementById('record-tooltip');
+  const d  = JSON.parse(decodeURIComponent(card.dataset.tt));
+  tt.innerHTML = `<div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:3px">${escHtml(d.artist)}</div>
+    <div style="font-weight:600;font-size:12px;line-height:1.3">${escHtml(d.name)}</div>
+    <div style="font-size:10px;color:#c8a96e;margin-top:4px">${d.plays} plays</div>`;
+  positionRecordTooltip(e, card);
+  tt.classList.add('visible');
+}
+function positionRecordTooltip(e, card) {
+  const tt   = document.getElementById('record-tooltip');
+  const rect = card.getBoundingClientRect();
+  tt.style.left = (rect.left + rect.width/2) + 'px';
+  tt.style.top  = (rect.top - 12) + 'px';
+}
+function hideRecordTooltip() {
+  document.getElementById('record-tooltip').classList.remove('visible');
+}
+
+/* ══════════════════════════════════════════════
+   COLLECTION PAGE
+   ══════════════════════════════════════════════ */
+function renderCollection() {
+  STATE.collectionLoaded = true;
+  const items = STATE.collection;
+  if (!items.length) {
+    const errorDetail = STATE.collectionError
+      ? `<div style="font-size:12px;color:var(--red);margin-top:8px;max-width:400px">${escHtml(STATE.collectionError)}</div>`
+      : '';
+    document.getElementById('collection-grid').innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text3)">
+        <div style="font-size:40px;margin-bottom:12px">📀</div>
+        <div style="font-size:15px;font-weight:500;margin-bottom:6px">No collection data</div>
+        <div style="font-size:13px">Paste your Google Sheets CSV on the setup screen to see your collection here.</div>
+        ${errorDetail}
+      </div>`;
+    return;
+  }
+
+  // Build decade options
+  const decades = [...new Set(items.map(a => Math.floor((parseInt(a.year)||0)/10)*10).filter(d => d > 0))].sort();
+  const decSel = document.getElementById('filter-decade');
+  decSel.innerHTML = '<option value="">All decades</option>' + decades.map(d => `<option value="${d}">${d}s</option>`).join('');
+
+  document.getElementById('collection-subtitle').textContent = `${items.length} albums across all formats`;
+
+  // Build plays lookup from Last.fm data
+  const playsMap = buildPlaysMap();
+
+  // Attach plays to collection items
+  STATE.collectionWithPlays = items.map(a => ({
+    ...a,
+    plays: lookupPlays(a.artist, a.album, playsMap)
+  }));
+
+  filterCollection();
+}
+
+function buildPlaysMap() {
+  const map = {};
+  for (const a of [...STATE.topAlbumsAllTime, ...STATE.topAlbums52w, ...STATE.topAlbums5y]) {
+    const k = albumKey(a);
+    if (!map[k]) map[k] = parseInt(a.playcount||0);
+  }
+  return map;
+}
+
+function lookupPlays(artist, album, map) {
+  const k = `${(artist||'').toLowerCase()}::${normaliseAlbumName(album).toLowerCase()}`;
+  return map[k] || 0;
+}
+
+let SORT_ASC = true;
+
+function toggleSortDir() {
+  SORT_ASC = !SORT_ASC;
+  const btn = document.getElementById('sort-dir-btn');
+  if (btn) btn.textContent = SORT_ASC ? '↑' : '↓';
+  filterCollection();
+}
+
+function filterCollection() {
+  const q = document.getElementById('collection-search').value.toLowerCase();
+  const fmt = document.getElementById('filter-format').value;
+  const dec = document.getElementById('filter-decade').value;
+  const sort = document.getElementById('filter-sort').value;
+  const playsMap = buildPlaysMap();
+
+  let items = (STATE.collectionWithPlays || STATE.collection.map(a => ({
+    ...a, plays: lookupPlays(a.artist, a.album, playsMap)
+  })));
+
+  if (q) items = items.filter(a => (a.artist||'').toLowerCase().includes(q) || (a.album||'').toLowerCase().includes(q));
+  if (fmt) items = items.filter(a => (a.format||'').toLowerCase() === fmt.toLowerCase());
+  if (dec) items = items.filter(a => Math.floor((parseInt(a.year)||0)/10)*10 === parseInt(dec));
+
+  const dir = SORT_ASC ? 1 : -1;
+  if (sort === 'album') items = items.slice().sort((a,b) => dir * (a.album||'').localeCompare(b.album||''));
+  else if (sort === 'artist_album') items = items.slice().sort((a,b) => {
+    const ac = (a.artist||'').localeCompare(b.artist||'');
+    return dir * (ac !== 0 ? ac : (a.album||'').localeCompare(b.album||''));
+  });
+  else if (sort === 'artist_year_album') items = items.slice().sort((a,b) => {
+    const ac = (a.artist||'').localeCompare(b.artist||'');
+    if (ac !== 0) return dir * ac;
+    const yc = (parseInt(a.year)||0) - (parseInt(b.year)||0);
+    if (yc !== 0) return dir * yc;
+    return dir * (a.album||'').localeCompare(b.album||'');
+  });
+  else if (sort === 'year') items = items.slice().sort((a,b) => dir * ((parseInt(b.year)||0) - (parseInt(a.year)||0)));
+  else if (sort === 'plays') items = items.slice().sort((a,b) => dir * (b.plays - a.plays));
+  else if (sort === 'rating') items = items.slice().sort((a,b) => dir * ((parseFloat(b.my_rating||0)) - (parseFloat(a.my_rating||0))));
+
+  document.getElementById('collection-count').textContent = `${items.length} album${items.length !== 1 ? 's' : ''}`;
+  renderCollectionWithCovers(items);
+}
+
+function toggleToListen(key, uid, coverUrl) {
+  // Try to get the most up-to-date cover URL from the DOM image if arg is empty
+  if (!coverUrl) {
+    const imgEl = document.getElementById(uid+'-img');
+    if (imgEl?.src) coverUrl = imgEl.src;
+  }
+  if (STATE.toListenSet.has(key)) {
+    STATE.toListenSet.delete(key);
+    delete STATE.toListenItems[key];
+  } else {
+    const [artist, album] = key.split('::');
+    STATE.toListenSet.add(key);
+    STATE.toListenItems[key] = { artist, album, coverUrl: coverUrl || '' };
+  }
+  // Update the card checkbox in collection
+  const cb   = document.getElementById(uid+'-cb');
+  const card = document.getElementById(uid+'-card');
+  if (cb)   cb.classList.toggle('checked', STATE.toListenSet.has(key));
+  if (card) card.classList.toggle('selected', STATE.toListenSet.has(key));
+  // Persist to localStorage
+  try { localStorage.setItem('vinyl_tolisten', JSON.stringify([...STATE.toListenSet])); } catch(e) {}
+  // Persist cover URLs separately
+  try {
+    const covers = {};
+    for (const [k,v] of Object.entries(STATE.toListenItems)) covers[k] = v.coverUrl || '';
+    localStorage.setItem('vinyl_tolisten_covers', JSON.stringify(covers));
+  } catch(e) {}
+  // Refresh Discover if open
+  if (STATE.currentPage === 'gaps') renderDiscoverSelection();
+}
+
+function clearToListen() {
+  STATE.toListenSet.clear();
+  STATE.toListenItems = {};
+  try { localStorage.removeItem('vinyl_tolisten'); localStorage.removeItem('vinyl_tolisten_covers'); } catch(e) {}
+  // Refresh checkboxes in collection if open
+  document.querySelectorAll('.album-select-cb').forEach(cb => cb.classList.remove('checked'));
+  document.querySelectorAll('.album-card').forEach(c => c.classList.remove('selected'));
+  renderDiscoverSelection();
+}
+
+function renderDiscoverSelection() {
+  const el = document.getElementById('discover-selection');
+  if (!el) return;
+  const count = STATE.toListenSet.size;
+  if (count === 0) {
+    el.innerHTML = '<div style="color:var(--text4);font-size:13px;padding:16px 0">No albums selected yet. Browse My Collection and tick albums to add them here.</div>';
+    return;
+  }
+  const items = Object.values(STATE.toListenItems).slice(0, 8);
+  el.innerHTML = `
+    <div class="selection-banner">
+      <div class="selection-banner-left">
+        <div>
+          <div class="selection-banner-count">${count}</div>
+          <div class="selection-banner-label">album${count !== 1 ? 's' : ''} to listen</div>
+        </div>
+        <div class="selection-covers">
+          ${items.map(a => a.coverUrl
+            ? `<img class="selection-cover-thumb" src="${escHtml(a.coverUrl)}" alt="">`
+            : '').join('')}
+        </div>
+      </div>
+      <button class="btn-clear-selection" onclick="clearToListen()">Clear list</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-top:4px">
+      ${Object.values(STATE.toListenItems).map(a => `
+        <div style="cursor:pointer" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
+          ${a.coverUrl ? `<img src="${escHtml(a.coverUrl)}" style="width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;display:block;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)" alt="">`
+            : `<div style="width:100%;aspect-ratio:1;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:6px">💿</div>`}
+          <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(a.album||'')}</div>
+          <div style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(a.artist||'')}</div>
+        </div>`).join('')}
+    </div>`;
+}
+const COVER_CACHE = {};
+
+async function fetchCoverArt(artist, album) {
+  const key = `${artist}::${album}`.toLowerCase();
+  if (COVER_CACHE[key] !== undefined) return COVER_CACHE[key];
+  COVER_CACHE[key] = null; // mark as fetching
+
+  const cleanAlbum = normaliseAlbumName(album);
+  const cleanKey   = `${artist}::${cleanAlbum}`.toLowerCase();
+
+  async function tryFetch(art, alb) {
+    // 1. Last.fm album.getinfo
+    const lfmData = await lfm('album.getinfo', { artist: art, album: alb });
+    const lfmImg = lfmData?.album?.image?.find(i => i.size === 'large')?.['#text'];
+    if (lfmImg && lfmImg.length > 10) return lfmImg;
+    // 2. MusicBrainz Cover Art Archive
+    const mbRes  = await fetch(`https://musicbrainz.org/ws/2/release/?query=artist:"${encodeURIComponent(art)}" AND release:"${encodeURIComponent(alb)}"&limit=1&fmt=json`);
+    const mbData = await mbRes.json();
+    const mbid   = mbData?.releases?.[0]?.id;
+    if (mbid) {
+      const caRes = await fetch(`https://coverartarchive.org/release/${mbid}/front-250`, { redirect: 'follow' });
+      if (caRes.ok) return caRes.url;
+    }
+    return null;
+  }
+
+  try {
+    // First attempt with full album name
+    let url = await tryFetch(artist, album);
+    // If no result and name differs after normalisation, retry with clean name
+    if (!url && cleanAlbum !== album) {
+      if (COVER_CACHE[cleanKey] !== undefined) {
+        url = COVER_CACHE[cleanKey];
+      } else {
+        url = await tryFetch(artist, cleanAlbum);
+        COVER_CACHE[cleanKey] = url;
+      }
+    }
+    COVER_CACHE[key] = url;
+    return url;
+  } catch(e) { /* ignore */ }
+  COVER_CACHE[key] = null;
+  return null;
+}
+
+function albumCardHtml(a, coverUrl) {
+  const fmtClass   = `fmt-${(a.format||'mp3').toLowerCase().replace(/[^a-z]/g,'')}`;
+  const fmtLabel   = a.format || '';
+  const playsLabel = a.plays > 0 ? `${a.plays.toLocaleString()} plays` : '';
+  const img        = coverUrl || a.coverUrl || '';
+  const uid        = `ac-${encodeURIComponent((a.artist||'')+'::'+( a.album||''))}`.replace(/[^a-zA-Z0-9\-_]/g,'_').slice(0,60);
+  const key        = `${(a.artist||'')}::${(a.album||'')}`;
+  const isSelected = STATE.toListenSet.has(key);
+  const artHtml    = img
+    ? `<img class="album-art" id="${uid}-img" src="${img}" alt="" loading="lazy" onerror="this.style.display='none';document.getElementById('${uid}-ph').style.display='flex'">`
+    : ``;
+  const ph = `<div class="album-art-placeholder" id="${uid}-ph" ${img ? 'style="display:none"' : ''}><span>${escHtml(a.artist||'')}</span><strong>${escHtml(a.album||'')}</strong></div>`;
+  return `
+    <div class="album-card${isSelected ? ' selected' : ''}" id="${uid}-card"
+      onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
+      <div class="album-select-cb${isSelected ? ' checked' : ''}" id="${uid}-cb"
+        onclick="event.stopPropagation();toggleToListen('${escHtml(key).replace(/'/g,"&#39;")}','${uid}','${escHtml(img).replace(/'/g,"&#39;")}')"></div>
+      ${artHtml}${ph}
+      <div class="album-title">${escHtml(a.album||'')}</div>
+      <div class="album-artist">${escHtml(a.artist||'')}</div>
+      <div class="album-meta">
+        <span class="format-badge ${fmtClass}">${escHtml(fmtLabel)}</span>
+        ${a.year ? `<span class="album-year">${a.year}</span>` : ''}
+        ${playsLabel ? `<span class="album-plays">${playsLabel}</span>` : ''}
+      </div>
+    </div>`;
+}
+
+async function renderCollectionWithCovers(items) {
+  // Render immediately with placeholders, then load covers progressively
+  const grid = document.getElementById('collection-grid');
+  // First pass: render all cards (covers from cache if available)
+  grid.innerHTML = items.map(a => {
+    const key = `${a.artist}::${a.album}`.toLowerCase();
+    const cached = COVER_CACHE[key];
+    return albumCardHtml(a, typeof cached === 'string' ? cached : '');
+  }).join('');
+  // Second pass: fetch missing covers in batches of 5
+  const missing = items.filter(a => COVER_CACHE[`${a.artist}::${a.album}`.toLowerCase()] === undefined);
+  const BATCH = 5;
+  for (let i = 0; i < missing.length; i += BATCH) {
+    const batch = missing.slice(i, i + BATCH);
+    await Promise.all(batch.map(async a => {
+      const url = await fetchCoverArt(a.artist, a.album);
+      if (url) {
+        const key = `${a.artist}::${a.album}`.toLowerCase();
+        const uid = `ac-${encodeURIComponent(a.artist+'::'+a.album)}`.replace(/[^a-zA-Z0-9\-_]/g,'_').slice(0,60);
+        const imgEl = document.getElementById(uid+'-img');
+        const phEl  = document.getElementById(uid+'-ph');
+        if (!imgEl && phEl) {
+          // Inject image
+          const img = document.createElement('img');
+          img.className = 'album-art'; img.src = url; img.alt = '';
+          img.id = uid+'-img';
+          img.onerror = () => { img.style.display='none'; if(phEl) phEl.style.display='flex'; };
+          phEl.parentNode.insertBefore(img, phEl);
+          phEl.style.display = 'none';
+        }
+      }
+    }));
+  }
+}
+
+/* ══════════════════════════════════════════════
+   STATS PAGE
+   ══════════════════════════════════════════════ */
+let STATS_PERIOD = 'overall';
+const PERIOD_LABELS = {
+  'overall': 'all time', '12month': 'last 365 days',
+  '3month': 'last 90 days', '1month': 'last 30 days', '7day': 'last 7 days'
+};
+
+async function setStatsPeriod(period) {
+  STATS_PERIOD = period;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === period));
+  // For non-overall periods, just reload top artists/albums; keep yearly chart as-is
+  await loadStatsForPeriod(period);
+}
+
+async function loadStats() {
+  try {
+    // Always load yearly scrobbles (overall)
+    const weeklyChart = await lfm('user.getWeeklyChartList');
+    const weeksByYear = {};
+    for (const ch of lfmArr(weeklyChart.weeklychartlist?.chart)) {
+      const yr = new Date(parseInt(ch.from)*1000).getFullYear();
+      if (!weeksByYear[yr]) weeksByYear[yr] = [];
+      weeksByYear[yr].push({ from: ch.from, to: ch.to });
+    }
+    STATE.weeksByYear = weeksByYear;
+    await buildYearlyScrobbles(weeksByYear);
+    await loadStatsForPeriod('overall');
+    STATE.statsLoaded = true; // only mark loaded on success
+  } catch(e) {
+    console.error('Stats error:', e);
+    document.getElementById('stats-cards').innerHTML = '<div style="padding:20px;color:var(--red)">Error loading stats: ' + escHtml(e.message) + '</div>';
+    STATE.statsLoaded = false;
+  }
+}
+
+async function loadStatsForPeriod(period) {
+  const periodCacheKey = `top_${period}`;
+  const cached = cLoad(periodCacheKey);
+
+  // Use cache if fresh
+  if (cached && !isStale(periodCacheKey, period)) {
+    STATE.topArtists     = cached.artists || [];
+    STATE.topAlbumsStats = cached.albums  || [];
+    const label = PERIOD_LABELS[period] || period;
+    document.getElementById('top-artists-period-label').textContent = label;
+    document.getElementById('top-albums-period-label').textContent  = label;
+    renderStats(period);
+    return;
+  }
+
+  // Show loading in lists
+  document.getElementById('top-artists-list').innerHTML = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
+  document.getElementById('top-albums-grid').innerHTML  = '<div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>';
+  showSyncBar(`Fetching ${PERIOD_LABELS[period] || period} stats…`, 30);
+
+  try {
+    const [topArtists, topAlbums] = await Promise.all([
+      lfm('user.getTopArtists', { period, limit: 20 }),
+      lfm('user.getTopAlbums',  { period, limit: 20 }),
+    ]);
+    STATE.topArtists     = lfmArr(topArtists.topartists?.artist);
+    STATE.topAlbumsStats = lfmArr(topAlbums.topalbums?.album);
+
+    cSave(periodCacheKey, { artists: STATE.topArtists, albums: STATE.topAlbumsStats, lastUpdated: Date.now() });
+    hideSyncBar();
+
+    const label = PERIOD_LABELS[period] || period;
+    document.getElementById('top-artists-period-label').textContent = label;
+    document.getElementById('top-albums-period-label').textContent  = label;
+    renderStats(period);
+  } catch(e) {
+    hideSyncBar();
+    console.error('Stats period error:', e);
+    document.getElementById('stats-cards').innerHTML = `<div style="padding:20px;color:var(--red)">Error loading stats: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function buildYearlyScrobbles(weeksByYear) {
+  const thisYear = new Date().getFullYear();
+  const years = Object.keys(weeksByYear).map(Number).sort();
+
+  // Load from cache first
+  const cached = cLoad('yearly') || {};
+  STATE.yearlyScrobbles = { ...cached };
+  delete STATE.yearlyScrobbles.lastUpdated;
+  delete STATE.yearlyScrobbles.lastYear;
+
+  // Past years never change — only fetch missing ones + current year
+  const missing = years.filter(yr => yr < thisYear && !STATE.yearlyScrobbles[yr]);
+  const needsFetch = [...missing, thisYear]; // always refresh current year
+  const total = needsFetch.length;
+
+  showSyncBar(`Loading yearly scrobbles… 0 / ${total}`, 5);
+
+  // Fetch sequentially to avoid rate limiting (150ms between calls)
+  for (let i = 0; i < needsFetch.length; i++) {
+    const yr = needsFetch[i];
+    showSyncBar(`Loading ${yr} scrobbles… (${i+1} / ${total})`, 5 + Math.round(85 * i / total));
+    try {
+      const from = Math.floor(new Date(yr, 0, 1).getTime()/1000);
+      const to   = Math.floor(new Date(yr, 11, 31, 23, 59, 59).getTime()/1000);
+      const data = await lfm('user.getRecentTracks', { from, to, limit: 1 });
+      STATE.yearlyScrobbles[yr] = parseInt(data.recenttracks?.['@attr']?.total || 0);
+    } catch { STATE.yearlyScrobbles[yr] = STATE.yearlyScrobbles[yr] || 0; }
+    if (i < needsFetch.length - 1) await sleep(150);
+  }
+
+  // Save to cache (with metadata)
+  cSave('yearly', { ...STATE.yearlyScrobbles, lastUpdated: Date.now(), lastYear: thisYear });
+  hideSyncBar(`✓ Scrobble history loaded`);
+}
+
+function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+/* ══════════════════════════════════════════════
+   THIS WEEK PAGE — mouse-driven filmstrip
+   ══════════════════════════════════════════════ */
+
+// Strip state (module-level so RAF and mousemove handlers share it)
+let _stripAlbums    = [];     // album data array
+let _stripOffset    = 0;      // current rendered scroll offset in px (float)
+let _stripVelocity  = 0;      // px/frame set by mouse position, 0 when mouse leaves
+let _stripCentreIdx = 0;      // index of currently centred album
+let _stripRAF       = null;   // requestAnimationFrame handle
+let _stripActive    = false;  // true while mouse is inside the strip
+const STRIP_ITEM_W  = 180;    // 160px cover + 20px gap
+const STRIP_MAX_SPD = 22;     // px per frame at full deflection (~1320px/s at 60fps)
+
+function _stripGetContainerWidth() {
+  const el = document.querySelector('.week-strip-outer');
+  return el ? el.offsetWidth : window.innerWidth;
+}
+
+function _stripUpdateLayout() {
+  const track = document.querySelector('.week-strip-track');
+  if (!track || !_stripAlbums.length) return;
+  const cw        = _stripGetContainerWidth();
+  const centreX   = cw / 2 - 80;                          // px from left edge to where cover left-edge should sit
+  const maxOffset = (_stripAlbums.length - 1) * STRIP_ITEM_W; // stop when last album is centred
+
+  _stripOffset = Math.min(Math.max(0, _stripOffset), maxOffset);
+  track.style.transform = `translateX(${centreX - _stripOffset}px)`;
+
+  // Find which item is closest to viewport centre
+  const items = track.querySelectorAll('.week-strip-item');
+  let closest = 0, minDist = Infinity;
+  items.forEach((el, i) => {
+    const itemCentre = centreX - _stripOffset + i * STRIP_ITEM_W + 80;
+    const dist = Math.abs(itemCentre - cw / 2);
+    if (dist < minDist) { minDist = dist; closest = i; }
+    el.classList.remove('centre');
+    el.classList.add('side');
+  });
+  if (items[closest]) {
+    items[closest].classList.add('centre');
+    items[closest].classList.remove('side');
+  }
+  if (closest !== _stripCentreIdx) {
+    _stripCentreIdx = closest;
+    _stripUpdateInfo();
+  }
+}
+
+function _stripUpdateInfo() {
+  const panel = document.getElementById('week-info-panel');
+  if (!panel || !_stripAlbums.length) return;
+  const a = _stripAlbums[_stripCentreIdx];
+  if (!a) return;
+  const artist = a.artist?.['#text'] || a.artist?.name || (typeof a.artist === 'string' ? a.artist : '') || '';
+  panel.innerHTML = `
+    <div class="week-info-rank">#${_stripCentreIdx + 1} this week</div>
+    <div class="week-info-album">${escHtml(a.name || '')}</div>
+    <div class="week-info-artist">${escHtml(artist)}</div>
+    <div class="week-info-plays">${parseInt(a.playcount || 0).toLocaleString()} plays</div>`;
+}
+
+function _stripRAFLoop() {
+  if (_stripActive) {
+    // While mouse is inside: apply velocity every frame
+    if (Math.abs(_stripVelocity) > 0.05) {
+      _stripOffset += _stripVelocity;
+      _stripUpdateLayout();
+    }
+    _stripRAF = requestAnimationFrame(_stripRAFLoop);
+  } else {
+    // Mouse has left: glide to rest smoothly then stop RAF
+    const snapTarget = _stripCentreIdx * STRIP_ITEM_W;
+    const delta = snapTarget - _stripOffset;
+    if (Math.abs(delta) > 0.3) {
+      _stripOffset += delta * 0.14;
+      _stripUpdateLayout();
+      _stripRAF = requestAnimationFrame(_stripRAFLoop);
+    } else {
+      _stripOffset = snapTarget;
+      _stripUpdateLayout();
+      _stripRAF = null;
+    }
+  }
+}
+
+function _stripOnMouseMove(e) {
+  const outer = document.querySelector('.week-strip-outer');
+  if (!outer) return;
+  const rect = outer.getBoundingClientRect();
+  const x    = e.clientX - rect.left;
+  const w    = rect.width;
+
+  // norm: -1 (far left) → 0 (centre) → +1 (far right)
+  const norm = (x / w) * 2 - 1;
+  const dead = 0.08; // ±8% dead zone at centre
+
+  if (Math.abs(norm) <= dead) {
+    _stripVelocity = 0;
+  } else {
+    // Quadratic ramp so small moves near centre feel gentle
+    const t = (Math.abs(norm) - dead) / (1 - dead); // 0→1
+    _stripVelocity = Math.sign(norm) * t * t * STRIP_MAX_SPD;
+  }
+
+  if (!_stripRAF) {
+    _stripActive = true;
+    _stripRAF = requestAnimationFrame(_stripRAFLoop);
+  }
+}
+
+function _stripOnMouseEnter() {
+  _stripActive = true;
+  if (!_stripRAF) _stripRAF = requestAnimationFrame(_stripRAFLoop);
+}
+
+function _stripOnMouseLeave() {
+  _stripVelocity = 0;
+  _stripActive   = false;
+  // RAF keeps running to glide snap into place
+  if (!_stripRAF) _stripRAF = requestAnimationFrame(_stripRAFLoop);
+}
+
+async function loadThisWeek() {
+  try {
+    // Calculate Monday 00:00 this week as Unix timestamp
+    const now   = new Date();
+    const day   = now.getDay(); // 0=Sun, 1=Mon … 6=Sat
+    const diffToMonday = (day === 0 ? 6 : day - 1); // days since last Monday
+    const monday = new Date(now);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - diffToMonday);
+    const fromTs = Math.floor(monday.getTime() / 1000);
+    const toTs   = Math.floor(now.getTime() / 1000);
+
+    // Fetch top albums for the Mon–now window via from/to
+    // Use getWeeklyAlbumChart which supports timestamps and is more reliable
+    // Fall back to period 7day if this errors
+    let albums = [];
+    try {
+      const chartData = await lfm('user.getWeeklyAlbumChart', { from: fromTs, to: toTs });
+      albums = lfmArr(chartData?.weeklyalbumchart?.album)
+        .sort((a, b) => parseInt(b.playcount||0) - parseInt(a.playcount||0))
+        .slice(0, 20);
+    } catch(e) {
+      // Fallback to 7day period
+      const albumsData = await lfm('user.getTopAlbums', { period: '7day', limit: 20 });
+      albums = lfmArr(albumsData?.topalbums?.album);
+    }
+
+    if (!albums.length) {
+      document.getElementById('thisweek-content').innerHTML =
+        '<div style="padding:60px 20px;text-align:center;color:var(--text3)">No scrobbles found since Monday.</div>';
+      STATE.weekLoaded = true;
+      return;
+    }
+
+    // Subtitle
+    const totalWeek = albums.reduce((s, a) => s + parseInt(a.playcount || 0), 0);
+    const years = Object.values(STATE.yearlyScrobbles);
+    const avgWeekly = years.length ? Math.round(years.reduce((a,b)=>a+b,0) / (years.length * 52)) : null;
+    document.getElementById('week-subtitle').textContent =
+      `${totalWeek.toLocaleString()} plays since Monday${avgWeekly ? ` · avg ${avgWeekly.toLocaleString()}/week` : ''}`;
+
+    // Build strip HTML
+    _stripAlbums    = albums;
+    _stripOffset    = 0;
+    _stripVelocity  = 0;
+    _stripActive    = false;
+    _stripCentreIdx = 0;
+
+    const itemsHtml = albums.map((a, i) => {
+      const img = lfmArr(a.image).find(im => im.size === 'extralarge' || im.size === 'large')?.['#text']
+               || lfmArr(a.image).find(im => im.size === 'medium')?.['#text'] || '';
+      return `<div class="week-strip-item${i === 0 ? ' centre' : ' side'}" data-idx="${i}">
+        ${img
+          ? `<img class="week-strip-cover" src="${escHtml(img)}" alt="" loading="lazy">`
+          : `<div class="week-strip-cover-placeholder">💿</div>`}
+      </div>`;
+    }).join('');
+
+    document.getElementById('thisweek-content').innerHTML = `
+      <div class="week-strip-outer" id="week-strip-outer">
+        <div class="week-strip-track" id="week-strip-track">${itemsHtml}</div>
+      </div>
+      <div class="week-info-panel" id="week-info-panel"></div>`;
+
+    // Init info panel
+    _stripUpdateInfo();
+    // Initial layout
+    _stripUpdateLayout();
+
+    // Fetch covers that aren't from Last.fm and update in background
+    albums.forEach(async (a, i) => {
+      const existing = lfmArr(a.image).find(im => im.size === 'extralarge' || im.size === 'large')?.['#text'];
+      if (existing) return;
+      const artistName = a.artist?.['#text'] || a.artist?.name || (typeof a.artist === 'string' ? a.artist : '') || '';
+      const url = await fetchCoverArt(artistName, a.name || '');
+      if (url) {
+        const item = document.querySelector(`.week-strip-item[data-idx="${i}"]`);
+        if (item) {
+          let imgEl = item.querySelector('img');
+          if (!imgEl) {
+            imgEl = document.createElement('img');
+            imgEl.className = 'week-strip-cover';
+            imgEl.alt = '';
+            item.innerHTML = '';
+            item.appendChild(imgEl);
+          }
+          imgEl.src = url;
+        }
+      }
+    });
+
+    // Wire mouse events
+    const outer = document.getElementById('week-strip-outer');
+    outer.addEventListener('mouseenter', _stripOnMouseEnter);
+    outer.addEventListener('mousemove',  _stripOnMouseMove);
+    outer.addEventListener('mouseleave', _stripOnMouseLeave);
+
+    STATE.weekLoaded = true;
+  } catch(e) {
+    console.error('This week error:', e);
+    document.getElementById('thisweek-content').innerHTML =
+      `<div style="padding:40px;color:var(--text3)">Could not load this week's data: ${escHtml(e.message)}</div>`;
+    STATE.weekLoaded = false;
+  }
+}
+
+
+
+function renderStats(period = 'overall') {
+  const u = STATE.userInfo;
+  const years = Object.keys(STATE.yearlyScrobbles).map(Number).sort();
+  const totalPlays = parseInt(u.playcount||0);
+  const maxYear = years.length ? Math.max(...years) : new Date().getFullYear();
+  const minYear = years.length ? Math.min(...years) : maxYear;
+  const thisYearPlays = STATE.yearlyScrobbles[maxYear] || 0;
+  const avgYearly = years.length ? Math.round(Object.values(STATE.yearlyScrobbles).reduce((a,b)=>a+b,0)/years.length) : 0;
+
+  if (period === 'overall') {
+    document.getElementById('stats-cards').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-card-val">${totalPlays.toLocaleString()}</div>
+        <div class="stat-card-label">Total scrobbles</div>
+        <div class="stat-card-sub">Since ${minYear}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${thisYearPlays.toLocaleString()}</div>
+        <div class="stat-card-label">This year</div>
+        <div class="stat-card-sub">vs avg ${avgYearly.toLocaleString()}/yr</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${parseInt(u.artist_count||0).toLocaleString()}</div>
+        <div class="stat-card-label">Artists scrobbled</div>
+        <div class="stat-card-sub">All time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${parseInt(u.track_count||0).toLocaleString()}</div>
+        <div class="stat-card-label">Tracks scrobbled</div>
+        <div class="stat-card-sub">All time</div>
+      </div>`;
+  } else {
+    const periodTotal = STATE.topArtists.reduce((s,a) => s + parseInt(a.playcount||0), 0);
+    document.getElementById('stats-cards').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-card-val">${STATE.topArtists.length}</div>
+        <div class="stat-card-label">Artists</div>
+        <div class="stat-card-sub">${PERIOD_LABELS[period]}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val">${STATE.topAlbumsStats.length}</div>
+        <div class="stat-card-label">Albums</div>
+        <div class="stat-card-sub">${PERIOD_LABELS[period]}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val" style="font-size:18px">${escHtml(STATE.topArtists[0]?.name||'—')}</div>
+        <div class="stat-card-label">Top artist</div>
+        <div class="stat-card-sub">${parseInt(STATE.topArtists[0]?.playcount||0).toLocaleString()} plays</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-val" style="font-size:18px">${escHtml(STATE.topAlbumsStats[0]?.name||'—')}</div>
+        <div class="stat-card-label">Top album</div>
+        <div class="stat-card-sub">${parseInt(STATE.topAlbumsStats[0]?.playcount||0).toLocaleString()} plays</div>
+      </div>`;
+  }
+
+  // Top artists — keep as list
+  const maxPlays = parseInt(STATE.topArtists[0]?.playcount || 1);
+  document.getElementById('top-artists-list').innerHTML = STATE.topArtists.slice(0,20).map((a,i) => {
+    const plays = parseInt(a.playcount||0);
+    const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text']||'';
+    return `
+      <div class="top-row">
+        <div class="top-rank">${i+1}</div>
+        ${img ? `<img class="top-art" src="${img}" alt="">` : `<div class="top-art-placeholder">🎤</div>`}
+        <div class="top-info"><div class="top-name">${escHtml(a.name)}</div></div>
+        <div><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(plays/maxPlays*100)}%"></div></div></div>
+        <div class="top-plays">${plays.toLocaleString()}<div class="top-plays-sub">plays</div></div>
+      </div>`;
+  }).join('');
+
+  // Top albums — cover grid
+  document.getElementById('top-albums-grid').innerHTML = STATE.topAlbumsStats.slice(0,20).map((a,i) => {
+    const plays = parseInt(a.playcount||0);
+    const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text'] || lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || '';
+    const artist = a.artist?.name || '';
+    const uid = `stat-${i}`;
+    return `<div class="album-card" onclick="openAlbumDetail('${escHtml(artist).replace(/'/g,"&#39;")}','${escHtml(a.name||'').replace(/'/g,"&#39;")}')">
+      ${img ? `<img class="album-art" src="${escHtml(img)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="album-art-placeholder" style="display:none"><span>${escHtml(artist)}</span><strong>${escHtml(a.name||'')}</strong></div>`
+      : `<div class="album-art-placeholder"><span>${escHtml(artist)}</span><strong>${escHtml(a.name||'')}</strong></div>`}
+      <div class="album-title">${escHtml(a.name||'')}</div>
+      <div class="album-artist">${escHtml(artist)}</div>
+      <div class="album-meta"><span class="album-plays">${plays.toLocaleString()} plays</span></div>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════
+   WRAPPED PAGE
+   ══════════════════════════════════════════════ */
+const YEAR_PALETTES = [
+  { bg: '#1a1a2e', fg: '#e8e8ff', accent: '#7c6fcd' },
+  { bg: '#0d2137', fg: '#e8f4ff', accent: '#4a9eda' },
+  { bg: '#1a2e1a', fg: '#e8ffe8', accent: '#5aad5a' },
+  { bg: '#2e1a1a', fg: '#ffe8e8', accent: '#c06060' },
+  { bg: '#2e2a1a', fg: '#fff8e8', accent: '#c8a040' },
+  { bg: '#1a2e2a', fg: '#e8fff8', accent: '#40b0a0' },
+  { bg: '#2a1a2e', fg: '#f8e8ff', accent: '#a060c0' },
+  { bg: '#1a1a1a', fg: '#f8f8f8', accent: '#c8a96e' },
+];
+
+async function loadWrapped() {
+  const regYear = STATE.userInfo ? new Date(parseInt(STATE.userInfo.registered?.unixtime||0)*1000).getFullYear() : 2007;
+  const thisYear = new Date().getFullYear();
+  const years = [];
+  for (let y = thisYear; y >= regYear; y--) years.push(y);
+
+  const sel = document.getElementById('wrapped-year-select');
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  sel.value = thisYear;
+
+  STATE.wrappedLoaded = true;
+  await loadWrappedYear(thisYear);
+}
+
+async function loadWrappedYear(year) {
+  const sel = document.getElementById('wrapped-year-select');
+  if (sel) sel.value = year;
+
+  if (STATE.wrappedCache[year]) {
+    renderWrappedYear(year, STATE.wrappedCache[year]);
+    return;
+  }
+
+  const panelsEl = document.getElementById('wrapped-panels');
+  panelsEl.innerHTML = '<div class="page-loading"><div class="load-spinner"></div><div class="load-text">Loading ' + year + '…</div></div>';
+
+  const wCacheKey = `wrapped_${year}`;
+  const thisYear  = new Date().getFullYear();
+  const wCached   = cLoad(wCacheKey);
+  const wStale    = isStale(wCacheKey, year < thisYear ? 'wrapped' : '7day');
+
+  if (wCached && !wStale) {
+    STATE.wrappedCache[year] = wCached;
+    renderWrappedYear(year, wCached);
+    return;
+  }
+
+  try {
+    // Top albums/artists via weekly charts
+    showSyncBar(`Loading ${year} top albums…`, 10);
+    const chartList  = await lfm('user.getWeeklyChartList');
+    const yearCharts = lfmArr(chartList.weeklychartlist?.chart).filter(c =>
+      new Date(parseInt(c.from)*1000).getFullYear() === year
+    );
+
+    const albumTotals  = {};
+    const artistTotals = {};
+
+    for (let i = 0; i < yearCharts.length; i++) {
+      const wc = yearCharts[i];
+      showSyncBar(`Loading ${year} weekly charts… ${i+1}/${yearCharts.length}`, 10 + Math.round(80 * i / yearCharts.length));
+      try {
+        const [albumRes, artistRes] = await Promise.all([
+          lfm('user.getWeeklyAlbumChart',  { from: wc.from, to: wc.to }),
+          lfm('user.getWeeklyArtistChart', { from: wc.from, to: wc.to }),
+        ]);
+        for (const a of lfmArr(albumRes?.weeklyalbumchart?.album)) {
+          const k = `${(a.artist?.['#text']||'').toLowerCase()}::${(a.name||'').toLowerCase()}`;
+          if (!albumTotals[k]) albumTotals[k] = { name: a.name, artist: a.artist?.['#text']||'', plays: 0, image: lfmArr(a.image) };
+          albumTotals[k].plays += parseInt(a.playcount||0);
+        }
+        for (const a of lfmArr(artistRes?.weeklyartistchart?.artist)) {
+          const k = (a.name||'').toLowerCase();
+          if (!artistTotals[k]) artistTotals[k] = { name: a.name, plays: 0, image: lfmArr(a.image) };
+          artistTotals[k].plays += parseInt(a.playcount||0);
+        }
+      } catch(e) { /* skip failed week */ }
+      await sleep(100);
+    }
+    const albums  = Object.values(albumTotals).sort((a,b)  => b.plays-a.plays).slice(0,10);
+    const artists = Object.values(artistTotals).sort((a,b) => b.plays-a.plays).slice(0,10);
+    const totalYear = albums.reduce((s,a) => s+a.plays, 0);
+    const palette = YEAR_PALETTES[year % YEAR_PALETTES.length];
+
+    // Fetch cover art for top albums (weekly chart has no images)
+    showSyncBar(`Loading ${year} album covers…`, 93);
+    await Promise.all(albums.map(async a => {
+      const url = await fetchCoverArt(a.artist, a.name);
+      if (url) a.coverUrl = url;
+    }));
+
+    const data = { albums, artists, totalYear, palette };
+    cSave(wCacheKey, { ...data, lastUpdated: Date.now() });
+    STATE.wrappedCache[year] = data;
+    hideSyncBar(`✓ ${year} loaded`);
+    renderWrappedYear(year, data);
+  } catch(e) {
+    hideSyncBar();
+    console.error('Wrapped error:', e);
+    document.getElementById('wrapped-panels').innerHTML =
+      `<div style="padding:40px;color:var(--text3)">Could not load data for ${year}: ${e.message}</div>`;
+  }
+}
+
+/* ─── DOMINANT COLOUR EXTRACTION ─── */
+function extractDominantColour(imgUrl, callback) {
+  if (!imgUrl) { callback(null); return; }
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40; canvas.height = 40;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 40, 40);
+      const data = ctx.getImageData(0, 0, 40, 40).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 16) {
+        r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+      }
+      r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
+
+      // Darken significantly for background use
+      const darken = 0.25;
+      const bgR = Math.round(r*darken);
+      const bgG = Math.round(g*darken);
+      const bgB = Math.round(b*darken);
+      const bg = `rgb(${bgR},${bgG},${bgB})`;
+
+      // Compute luminance of the ACTUAL darkened background colour
+      const bgLum = 0.299*bgR + 0.587*bgG + 0.114*bgB;
+      // Dark bg (lum < 60) → always use light text for readability
+      const fg = bgLum < 60 ? '#f0ede6' : (bgLum < 160 ? '#f0ede6' : '#1a1a18');
+
+      // Accent: a lighter tint of the source colour for highlights
+      const accent = `rgb(${Math.min(255,Math.round(r*1.5))},${Math.min(255,Math.round(g*1.5))},${Math.min(255,Math.round(b*1.5))})`;
+      callback({ bg, fg, accent });
+    } catch(e) { callback(null); }
+  };
+  img.onerror = () => callback(null);
+  img.src = imgUrl;
+}
+
+function renderWrappedYear(year, d) {
+  const { albums, artists, totalYear, palette } = d;
+  const topImg = albums[0]?.coverUrl || lfmArr(albums[0]?.image).find(im => im.size === 'extralarge' || im.size === 'large')?.['#text'] || '';
+  const panelsEl = document.getElementById('wrapped-panels');
+
+  function doRender(colours) {
+    const pal = colours || palette;
+    panelsEl.innerHTML = `
+      <div style="background:${pal.bg};border-radius:20px;overflow:hidden;margin-bottom:24px;transition:background .6s">
+
+        <!-- Hero -->
+        <div style="display:grid;grid-template-columns:160px 1fr;gap:40px;align-items:center;padding:48px 48px 40px;position:relative;overflow:hidden">
+          <div style="font-family:'DM Serif Display',serif;font-size:260px;font-weight:400;line-height:1;
+            opacity:.06;position:absolute;bottom:-60px;right:-10px;pointer-events:none;color:${pal.fg};white-space:nowrap">${year}</div>
+
+          ${topImg
+            ? `<img src="${escHtml(topImg)}" style="width:160px;height:160px;border-radius:14px;object-fit:cover;box-shadow:0 28px 60px rgba(0,0,0,.55);flex-shrink:0;display:block" alt="">`
+            : `<div style="width:160px;height:160px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:72px">🎵</div>`}
+
+          <div style="position:relative;z-index:1;color:${pal.fg}">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.5;margin-bottom:10px">Your year in music</div>
+            <div style="font-family:'DM Serif Display',serif;font-size:80px;font-weight:400;line-height:.9;margin-bottom:20px;letter-spacing:-2px">${year}</div>
+            ${albums[0] ? `<div style="font-size:22px;font-weight:700;line-height:1.2;margin-bottom:4px">${escHtml(albums[0].name)}</div>
+            <div style="font-size:15px;opacity:.6;margin-bottom:32px">${escHtml(albums[0].artist||'')}</div>` : ''}
+            <div style="display:flex;gap:40px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:13px;font-weight:700;letter-spacing:-0.5px">${artists[0] ? escHtml(artists[0].name) : '—'}</div>
+                <div style="font-size:10px;opacity:.5;text-transform:uppercase;letter-spacing:1.2px;margin-top:2px">Top artist</div>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700">${albums.length}</div>
+                <div style="font-size:10px;opacity:.5;text-transform:uppercase;letter-spacing:1.2px;margin-top:2px">Albums</div>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700">${artists.length}</div>
+                <div style="font-size:10px;opacity:.5;text-transform:uppercase;letter-spacing:1.2px;margin-top:2px">Artists</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <hr style="border-color: #333; margin: 40px 0;">
+        <!-- Top Albums Grid -->
+        <div style="padding:0 52px 48px;color:${pal.fg}">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.45;margin-bottom:20px">Top albums</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));max-width:calc(5 * 130px + 4 * 20px);gap:20px">
+            ${albums.map((a, i) => {
+              const img = a.coverUrl || lfmArr(a.image).find(im=>im.size==='extralarge'||im.size==='large')?.['#text']
+                       || lfmArr(a.image).find(im=>im.size==='medium')?.['#text'] || '';
+              return `<div style="cursor:pointer" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.name||'').replace(/'/g,"&#39;")}')">
+                ${img
+                  ? `<img src="${escHtml(img)}" style="width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;display:block;margin-bottom:10px;box-shadow:0 6px 20px rgba(0,0,0,.4);transition:transform .25s" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform=''" alt="">`
+                  : `<div style="width:100%;aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:10px">💿</div>`}
+                <div style="font-size:10px;font-weight:700;opacity:.35;margin-bottom:2px;color:${pal.fg}">${i+1}</div>
+                <div style="font-size:13px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${pal.fg}">${escHtml(a.name||'')}</div>
+                <div style="font-size:11px;opacity:.55;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;color:${pal.fg}">${escHtml(a.artist||'')}</div>
+                <div style="font-size:11px;opacity:.4;margin-top:2px;color:${pal.fg}">${a.plays.toLocaleString()} plays</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
 
-        <!-- ZONE 2: Collection Rediscovery -->
-        <h2 class="section-title">⏳ Collection Rediscovery</h2>
-        
-        <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Nostalgia (High Play, Not Recent)</h3>
-        <div id="nostalgia-grid" class="album-grid"></div>
+        <!-- Top Artists List -->
+        <div style="padding:0 52px 52px;color:${pal.fg}">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;opacity:.45;margin-bottom:16px">Top artists</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            ${artists.map((a, i) => {
+              const img = lfmArr(a.image).find(im=>im.size==='medium')?.['#text']||'';
+              return `<div style="display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:8px;transition:background .15s;cursor:default"
+                onmouseover="this.style.background='rgba(255,255,255,.07)'" onmouseout="this.style.background=''">
+                <div style="font-size:13px;font-weight:700;opacity:.35;width:22px;text-align:right;flex-shrink:0;color:${pal.fg}">${i+1}</div>
+                ${img ? `<img src="${escHtml(img)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="">`
+                      : `<div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px">🎤</div>`}
+                <div style="flex:1;font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${pal.fg}">${escHtml(a.name||'')}</div>
+                <div style="font-size:13px;font-weight:600;opacity:.65;flex-shrink:0;color:${pal.fg}">${a.plays.toLocaleString()}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
 
-        <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Unplayed Physical Media</h3>
-        <div id="unplayed-grid" class="album-grid"></div>
+      </div>`;
+  }
 
-        <hr style="border-color: #333; margin: 40px 0;">
+  // Kick off colour extraction from top album cover, render immediately with palette fallback
+  panelsEl.innerHTML = '<div class="page-loading"><div class="load-spinner"></div><div class="load-text">Rendering…</div></div>';
+  if (topImg) {
+    extractDominantColour(topImg, colours => doRender(colours));
+  } else {
+    doRender(null);
+  }
+}
 
-        <!-- ZONE 3: Taste-Based Recommendations -->
-        <h2 class="section-title">✨ Recommendations
-            <button class="btn-action" style="font-size:0.7rem; padding: 4px 10px" onclick="refreshRecommendations()">↻ Refresh</button>
-        </h2>
-        
-        <h3 style="margin-bottom: 10px; font-size: 1.1rem;">🎧 Heard Before (Not Owned)</h3>
-        <div id="heard-before-grid" class="album-grid"></div>
+/* ══════════════════════════════════════════════
+   DISCOVER PAGE (formerly Gaps)
+   ══════════════════════════════════════════════ */
 
-        <h3 style="margin-bottom: 10px; font-size: 1.1rem;">✨ Brand New Discovery</h3>
-        <div id="new-discovery-grid" class="album-grid"></div>
+function buildDiscoverGapsHTML(unplayed, rarelyPlayed, nostalgiaAlbums) {
+  function albumRow(a) {
+    const img = a.coverUrl || '';
+    return `<div class="top-row gaps-filterable" data-format="${escHtml(a.format||'')}">
+      ${img
+        ? `<img class="top-art" src="${escHtml(img)}" alt="" onerror="this.style.display='none'">`
+        : `<div class="top-art-placeholder">💿</div>`}
+      <div class="top-info">
+        <div class="top-name">${escHtml(a.album||'')}</div>
+        <div class="top-sub">${escHtml(a.artist||'')} · ${a.year||''}
+          <span class="format-badge fmt-${(a.format||'').toLowerCase()}" style="font-size:9px;padding:1px 5px;margin-left:4px">${escHtml(a.format||'')}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+  function rareRow(a) {
+    const img = a.coverUrl || '';
+    return `<div class="top-row gaps-filterable" data-format="${escHtml(a.format||'')}">
+      ${img
+        ? `<img class="top-art" src="${escHtml(img)}" alt="" onerror="this.style.display='none'">`
+        : `<div class="top-art-placeholder">💿</div>`}
+      <div class="top-info">
+        <div class="top-name">${escHtml(a.album||'')}</div>
+        <div class="top-sub">${escHtml(a.artist||'')}</div>
+      </div>
+      <div class="top-plays">${a.plays}<div class="top-plays-sub">plays</div></div>
+    </div>`;
+  }
 
-    </main>
+  const formatFilter = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <select class="filter-select" id="gaps-filter-format" onchange="filterGaps()" style="font-size:12px;padding:5px 10px">
+      <option value="">All formats</option>
+      <option value="CD">CD</option>
+      <option value="mp3">MP3</option>
+      <option value="Spotify">Spotify</option>
+    </select>
+    <span style="font-size:12px;color:var(--text4)">Filter by format</span>
+  </div>`;
 
-    <script>
-        // ==========================================
-        // STATE & CONFIGURATION
-        // ==========================================
-        const LASTFM_API_KEY = 'YOUR_LASTFM_API_KEY';
-        const LASTFM_USER = 'YOUR_USERNAME';
-        
-        let collectionData = []; 
-        let scrobbleData = {}; 
-        let listeningQueue = JSON.parse(localStorage.getItem('vinyl_listening_queue')) || [];
-        let recommendationsCache = JSON.parse(localStorage.getItem('vinyl_recommendations_v2')) || null;
+  return `
+    <!-- 1. My Current Selection -->
+    <div class="discover-card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+        <div class="discover-card-title">My current selection</div>
+      </div>
+      <div class="discover-card-sub">Albums you've flagged from your collection to listen to next</div>
+      <div id="discover-selection"></div>
+    </div>
 
-        // ==========================================
-        // UI & TAB MANAGEMENT
-        // ==========================================
-        function switchTab(tabId) {
-            document.getElementById('view-collection').classList.add('hidden');
-            document.getElementById('view-discover').classList.add('hidden');
-            document.getElementById('tab-collection').classList.remove('active');
-            document.getElementById('tab-discover').classList.remove('active');
+    <!-- 2. Nostalgia -->
+    <div class="discover-card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+        <div class="discover-card-title">Nostalgia</div>
+        <button class="btn-sm" onclick="refreshNostalgia()" style="font-size:11px;padding:4px 10px">More ↻</button>
+      </div>
+      <div class="discover-card-sub">Albums you used to love but haven't listened to in years</div>
+      <div class="nostalgia-grid" id="nostalgia-grid">
+        ${renderNostalgiaItems(nostalgiaAlbums)}
+      </div>
+    </div>
 
-            document.getElementById(`view-${tabId}`).classList.remove('hidden');
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-        }
+    <!-- 3 & 4: Owned sections with per-section format filter -->
+    <div class="discover-grid">
+      <div class="discover-card gaps-card" id="gaps-card-unplayed">
+        <div class="discover-card-title">Owned but never played <span class="gaps-section-count">${unplayed.length}</span></div>
+        <div class="discover-card-sub">Albums in your collection with 0 Last.fm scrobbles</div>
+        ${formatFilter}
+        <div class="top-list">${unplayed.slice(0,30).map(albumRow).join('')}</div>
+      </div>
+      <div class="discover-card gaps-card" id="gaps-card-rarely">
+        <div class="discover-card-title">Rarely played <span class="gaps-section-count">${rarelyPlayed.length}</span></div>
+        <div class="discover-card-sub">Albums you own with very few plays</div>
+        ${formatFilter.replace('gaps-filter-format', 'gaps-filter-format-2').replace('filterGaps()', 'filterGaps()')}
+        <div class="top-list">${rarelyPlayed.slice(0,30).map(rareRow).join('')}</div>
+      </div>
+    </div>`;
+}
 
-        // ==========================================
-        // ZONE 1: LISTENING QUEUE
-        // ==========================================
-        function toggleQueue(albumId) {
-            const album = collectionData.find(a => a.id === albumId) || getRecommendationById(albumId);
-            if (!album) return;
+let _nostalgiaPool = [];
+let _nostalgiaShown = new Set(); // keys shown in the current batch — excluded from next More click
 
-            const existingIndex = listeningQueue.findIndex(a => a.id === albumId);
-            if (existingIndex > -1) {
-                listeningQueue.splice(existingIndex, 1);
-            } else {
-                listeningQueue.push(album);
-            }
-            
-            localStorage.setItem('vinyl_listening_queue', JSON.stringify(listeningQueue));
-            renderAll();
-        }
+function renderNostalgiaItems(items) {
+  if (!items.length) return '<div style="color:var(--text4);font-size:13px;padding:8px 0">Not enough historical data yet.</div>';
+  return items.map(a => {
+    const img = a.coverUrl || '';
+    return `<div class="nostalgia-card" onclick="openAlbumDetail('${escHtml(a.artist||'').replace(/'/g,"&#39;")}','${escHtml(a.album||'').replace(/'/g,"&#39;")}')">
+      ${img
+        ? `<img class="nostalgia-cover" src="${escHtml(img)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : ''}
+      <div class="nostalgia-cover-placeholder" ${img ? 'style="display:none"' : ''}>💿</div>
+      <div class="nostalgia-name">${escHtml(a.album||'')}</div>
+      <div class="nostalgia-artist">${escHtml(a.artist||'')}</div>
+    </div>`;
+  }).join('');
+}
 
-        function clearQueue() {
-            listeningQueue = [];
-            localStorage.setItem('vinyl_listening_queue', JSON.stringify(listeningQueue));
-            renderAll();
-        }
+function refreshNostalgia() {
+  if (!_nostalgiaPool.length) return;
+  // Exclude albums shown in the last batch
+  let candidates = _nostalgiaPool.filter(a => !_nostalgiaShown.has(`${a.artist}::${a.album}`));
+  // If fewer than 5 are left, reset exclusions and use the full pool
+  if (candidates.length < 5) {
+    _nostalgiaShown.clear();
+    candidates = _nostalgiaPool;
+  }
+  const picked = [...candidates].sort(() => Math.random() - 0.5).slice(0, 5);
+  _nostalgiaShown = new Set(picked.map(a => `${a.artist}::${a.album}`));
+  const el = document.getElementById('nostalgia-grid');
+  if (el) el.innerHTML = renderNostalgiaItems(picked);
+}
 
-        function getRecommendationById(id) {
-            if (!recommendationsCache) return null;
-            return [...recommendationsCache.heardBefore, ...recommendationsCache.brandNew].find(a => a.id === id);
-        }
+function filterGaps() {
+  // Both format dropdowns sync together
+  const fmt1 = (document.getElementById('gaps-filter-format')?.value   || '').toLowerCase();
+  const fmt2 = (document.getElementById('gaps-filter-format-2')?.value || '').toLowerCase();
+  const fmt = fmt1 || fmt2;
+  // Sync both selects
+  if (document.getElementById('gaps-filter-format'))   document.getElementById('gaps-filter-format').value   = fmt;
+  if (document.getElementById('gaps-filter-format-2')) document.getElementById('gaps-filter-format-2').value = fmt;
 
-        // ==========================================
-        // ZONE 2: COLLECTION REDISCOVERY LOGIC
-        // ==========================================
-        function calculateNostalgiaScore(historicalPlays, recentPlays) {
-            if (historicalPlays < 20) return 0; // Baseline requirement
-            const recentRatio = Math.min(recentPlays / historicalPlays, 1);
-            return historicalPlays * (1 - recentRatio);
-        }
+  document.querySelectorAll('.gaps-filterable').forEach(row => {
+    const rowFmt = (row.dataset.format || '').toLowerCase();
+    row.style.display = (!fmt || rowFmt === fmt) ? '' : 'none';
+  });
+  document.querySelectorAll('.gaps-card').forEach(card => {
+    const countEl = card.querySelector('.gaps-section-count');
+    if (!countEl) return;
+    const visible = card.querySelectorAll('.gaps-filterable:not([style*="none"])').length;
+    countEl.textContent = visible;
+  });
+}
 
-        function getRediscoveryAlbums() {
-            let nostalgia = [];
-            let unplayed = [];
+async function loadGaps() {
+  STATE.gapsLoaded = true;
+  try {
+    if (!STATE.topArtists.length) {
+      const ta = await lfm('user.getTopArtists', { period: 'overall', limit: 100 });
+      STATE.topArtists = lfmArr(ta.topartists?.artist);
+    }
+    if (!STATE.topAlbumsAllTime.length) {
+      const ta = await lfm('user.getTopAlbums', { period: 'overall', limit: 200 });
+      STATE.topAlbumsAllTime = lfmArr(ta.topalbums?.album);
+    }
 
-            collectionData.forEach(album => {
-                const plays = album.scrobbles || 0;
-                const recentPlays = album.recentScrobbles || 0;
+    const playsMap = buildPlaysMap();
+    const collection = STATE.collection;
 
-                // Nostalgia Logic
-                const score = calculateNostalgiaScore(plays, recentPlays);
-                if (score > 0 && recentPlays === 0) {
-                    nostalgia.push({ ...album, nostalgiaScore: score });
-                }
+    // 1. Owned but unplayed
+    const unplayed = collection.filter(a => lookupPlays(a.artist, a.album, playsMap) === 0);
 
-                // Unplayed Physical Logic (Format exists, 0 scrobbles)
-                if (plays === 0 && album.format && album.format !== 'Digital') {
-                    unplayed.push(album);
-                }
-            });
+    // 2. Rarely played (bottom 20%)
+    const withPlays = collection.map(a => ({ ...a, plays: lookupPlays(a.artist, a.album, playsMap) }))
+      .filter(a => a.plays > 0).sort((a,b) => a.plays - b.plays);
+    const rarelyPlayed = withPlays.slice(0, Math.ceil(withPlays.length * 0.2));
 
-            // Sort nostalgia by highest score
-            nostalgia.sort((a, b) => b.nostalgiaScore - a.nostalgiaScore);
-            return { nostalgia, unplayed };
-        }
+    // 3. Nostalgia pool — fetch top 500 all-time for a wider candidate set
+    showSyncBar('Building nostalgia pool…', 60);
+    let nostalgiaSource = STATE.topAlbumsAllTime;
+    if (nostalgiaSource.length < 500) {
+      // topAlbumsAllTime may have been fetched with a lower limit — re-fetch with 500
+      try {
+        const big = await lfm('user.getTopAlbums', { period: 'overall', limit: 500 });
+        nostalgiaSource = lfmArr(big.topalbums?.album);
+      } catch(e) { /* fall back to what we have */ }
+    }
 
-        // ==========================================
-        // ZONE 3: RECOMMENDATION ENGINE (LAST.FM)
-        // ==========================================
-        async function fetchRecommendations() {
-            // Note: In a real app, replace this with actual fetch calls to Last.fm:
-            // 1. user.getTopTags -> get favorite genres
-            // 2. tag.getTopAlbums -> get top albums for those genres
-            // 3. Filter out items already in collectionData
-            
-            if (LASTFM_API_KEY === 'YOUR_LASTFM_API_KEY') {
-                console.warn("No Last.fm API key. Using simulated recommendation data.");
-                return simulateRecommendations();
-            }
+    const recent52wMap = {};
+    for (const a of STATE.topAlbums52w) {
+      recent52wMap[albumKey(a)] = parseInt(a.playcount||0);
+    }
 
-            // Real API logic template:
-            /*
-            const response = await fetch(`https://ws.audioscrobbler.com/2.0/?method=user.getTopTags&user=${LASTFM_USER}&api_key=${LASTFM_API_KEY}&format=json`);
-            const data = await response.json();
-            // ... process tags, fetch albums, check ownership ...
-            */
-           return { heardBefore: [], brandNew: [] }; 
-        }
+    // Score each album: historicalPlays × (1 − recentRatio)
+    // Since eligible albums have 0 recent plays, score = historicalPlays exactly,
+    // but formula is written in full for future extensibility
+    const scored = nostalgiaSource
+      .map(a => {
+        const allTimePlays   = parseInt(a.playcount||0);
+        const recent52wPlays = recent52wMap[albumKey(a)] || 0;
+        const historicalPlays = allTimePlays - recent52wPlays;
+        const recentRatio = allTimePlays > 0 ? recent52wPlays / allTimePlays : 0;
+        const score = historicalPlays * (1 - recentRatio);
+        return { a, allTimePlays, recent52wPlays, historicalPlays, score };
+      })
+      .filter(({ historicalPlays, recent52wPlays }) =>
+        historicalPlays >= 20 && recent52wPlays === 0
+      )
+      .sort((x, y) => y.score - x.score)
+      .slice(0, 50); // top 50 draw pool
 
-        async function refreshRecommendations() {
-            document.getElementById('heard-before-grid').innerHTML = '<div class="empty-state">Fetching your taste profile...</div>';
-            const recs = await fetchRecommendations();
-            recommendationsCache = {
-                timestamp: Date.now(),
-                ...recs
-            };
-            localStorage.setItem('vinyl_recommendations_v2', JSON.stringify(recommendationsCache));
-            renderAll();
-        }
+    _nostalgiaPool = await Promise.all(
+      scored.map(async ({ a }) => {
+        const img = lfmArr(a.image).find(im=>im.size==='large')?.['#text']
+                 || await fetchCoverArt(a.artist?.name||a.artist||'', a.name||'');
+        return { artist: a.artist?.name||a.artist||'', album: a.name||'', coverUrl: img||'' };
+      })
+    );
 
-        function checkCacheValidity() {
-            if (!recommendationsCache) return false;
-            const ONE_DAY = 24 * 60 * 60 * 1000;
-            return (Date.now() - recommendationsCache.timestamp) < ONE_DAY;
-        }
+    // Pick first batch, seed the shown-set so More never repeats
+    const firstBatch = [..._nostalgiaPool].sort(() => Math.random() - 0.5).slice(0, 5);
+    _nostalgiaShown = new Set(firstBatch.map(a => `${a.artist}::${a.album}`));
+    const nostalgiaAlbums = firstBatch;
 
-        // ==========================================
-        // RENDERING ENGINES
-        // ==========================================
-        function createAlbumCard(album, isQueue = false) {
-            const inQueue = listeningQueue.some(a => a.id === album.id);
-            const btnText = inQueue ? 'Remove' : '+ To Listen';
-            const btnClass = inQueue ? 'btn-remove' : 'btn-add';
+    // Fetch covers for unplayed/rarely played rows (using Last.fm album.getinfo)
+    const coverFetch = async (a) => {
+      const url = await fetchCoverArt(a.artist||'', a.album||'');
+      return { ...a, coverUrl: url || '' };
+    };
+    const [unplayedWithCovers, rareWithCovers] = await Promise.all([
+      Promise.all(unplayed.slice(0,30).map(coverFetch)),
+      Promise.all(rarelyPlayed.slice(0,30).map(coverFetch)),
+    ]);
 
-            return `
-                <div class="album-card">
-                    <img class="cover-art" src="${album.cover || 'https://via.placeholder.com/150/333333/666666?text=No+Cover'}" alt="Cover">
-                    <div class="badge-container">
-                        ${album.format ? `<span class="badge format">${album.format}</span>` : ''}
-                        ${album.scrobbles !== undefined ? `<span class="badge scrobbles">${album.scrobbles} plays</span>` : ''}
-                        ${album.genre ? `<span class="badge genre">${album.genre}</span>` : ''}
-                    </div>
-                    <div class="album-title" title="${album.title}">${album.title}</div>
-                    <div class="album-artist" title="${album.artist}">${album.artist}</div>
-                    <button class="action-btn ${btnClass}" onclick="toggleQueue('${album.id}')">${btnText}</button>
-                </div>
-            `;
-        }
+    document.getElementById('gaps-content').innerHTML = buildDiscoverGapsHTML(unplayedWithCovers, rareWithCovers, nostalgiaAlbums);
+    renderDiscoverSelection();
+    filterGaps();
+  } catch(e) {
+    console.error('Discover error:', e);
+    document.getElementById('gaps-content').innerHTML = '<div style="padding:40px;color:var(--text3)">Could not load discover data: ' + escHtml(e.message) + '</div>';
+  }
+}
 
-        function renderGrid(containerId, dataArray, emptyMessage) {
-            const container = document.getElementById(containerId);
-            if (!dataArray || dataArray.length === 0) {
-                container.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
-                return;
-            }
-            container.innerHTML = dataArray.map(a => createAlbumCard(a)).join('');
-        }
+/* ─── UTILS ─── */
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
-        function renderAll() {
-            // Render Queue
-            renderGrid('queue-grid', listeningQueue, 'Your queue is empty. Add albums from your collection or recommendations.');
+function openAlbumDetail(artist, album) {
+  // Future: open a modal with full album details
+  window.open(`https://www.last.fm/music/${encodeURIComponent(artist)}/${encodeURIComponent(album)}`, '_blank');
+}
 
-            // Render Rediscovery
-            const { nostalgia, unplayed } = getRediscoveryAlbums();
-            renderGrid('nostalgia-grid', nostalgia, 'No nostalgia albums found. Keep scrobbling!');
-            renderGrid('unplayed-grid', unplayed, 'You have played all your physical media!');
+/* ─── AUTO-LOAD if saved ─── */
+window.addEventListener('DOMContentLoaded', () => {
+  // Restore To Listen list
+  try {
+    const saved = localStorage.getItem('vinyl_tolisten');
+    const savedCovers = JSON.parse(localStorage.getItem('vinyl_tolisten_covers') || '{}');
+    if (saved) {
+      const keys = JSON.parse(saved);
+      keys.forEach(k => {
+        STATE.toListenSet.add(k);
+        const [artist, album] = k.split('::');
+        STATE.toListenItems[k] = { artist, album, coverUrl: savedCovers[k] || '' };
+      });
+    }
+  } catch(e) {}
 
-            // Render Recommendations
-            if (recommendationsCache) {
-                renderGrid('heard-before-grid', recommendationsCache.heardBefore, 'No matches found.');
-                renderGrid('new-discovery-grid', recommendationsCache.brandNew, 'No new discoveries found right now.');
-            } else {
-                document.getElementById('heard-before-grid').innerHTML = `<div class="empty-state"><button class="btn-action" onclick="refreshRecommendations()">Generate Recommendations</button></div>`;
-                document.getElementById('new-discovery-grid').innerHTML = '';
-            }
+  const savedUser   = localStorage.getItem('vinyl_username') || 'asimplemind';
+  const savedCsvUrl = localStorage.getItem('vinyl_csv_url')
+    || 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT7aSH-notHa5iXMXFFhERQcWzx8RwXPs3Um6OL3TGLV6AnhnxdWHTckz4kEGYctqAcGm1TIba6wuLK/pub?output=csv';
 
-            // Render Collection (just for demo purposes)
-            renderGrid('collection-grid', collectionData, 'Your collection is empty.');
-        }
+  document.getElementById('input-username').value = savedUser;
+  document.getElementById('input-csv-url').value  = savedCsvUrl;
 
-        // ==========================================
-        // DEMO DATA LOADER (For immediate testing)
-        // ==========================================
-        function loadDemoData() {
-            collectionData = [
-                { id: 'c1', title: 'Dark Side of the Moon', artist: 'Pink Floyd', format: 'Vinyl', scrobbles: 150, recentScrobbles: 0, cover: 'https://upload.wikimedia.org/wikipedia/en/3/3b/Dark_Side_of_the_Moon.png' },
-                { id: 'c2', title: 'Abbey Road', artist: 'The Beatles', format: 'Vinyl', scrobbles: 45, recentScrobbles: 5, cover: 'https://upload.wikimedia.org/wikipedia/en/4/42/Beatles_-_Abbey_Road.jpg' },
-                { id: 'c3', title: 'Random Access Memories', artist: 'Daft Punk', format: 'CD', scrobbles: 0, recentScrobbles: 0, cover: 'https://upload.wikimedia.org/wikipedia/en/a/a7/Random_Access_Memories.jpg' },
-                { id: 'c4', title: 'In Rainbows', artist: 'Radiohead', format: 'Digital', scrobbles: 300, recentScrobbles: 0, cover: 'https://upload.wikimedia.org/wikipedia/en/1/14/Inrainbowscover.png' }
-            ];
-            
-            if(!checkCacheValidity()){
-                recommendationsCache = simulateRecommendations();
-                recommendationsCache.timestamp = Date.now();
-                localStorage.setItem('vinyl_recommendations_v2', JSON.stringify(recommendationsCache));
-            }
-            renderAll();
-        }
-
-        function simulateRecommendations() {
-            return {
-                heardBefore: [
-                    { id: 'r1', title: 'Currents', artist: 'Tame Impala', genre: 'Psychedelic Pop', scrobbles: 12, cover: 'https://upload.wikimedia.org/wikipedia/en/9/9b/Tame_Impala_-_Currents.png' }
-                ],
-                brandNew: [
-                    { id: 'r2', title: 'IGOR', artist: 'Tyler, the Creator', genre: 'Hip Hop', scrobbles: 0, cover: 'https://upload.wikimedia.org/wikipedia/en/5/51/Igor_-_Tyler%2C_the_Creator.jpg' }
-                ]
-            };
-        }
-
-        // Initialize App
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!checkCacheValidity()) {
-                recommendationsCache = null;
-            }
-            renderAll();
-        });
-
-    </script>
+  // Restore collection toggle state (default ON if we have a URL)
+  const collectionOn = localStorage.getItem('vinyl_collection_toggle') !== 'off';
+  if (collectionOn) {
+    document.getElementById('collection-toggle').classList.add('on');
+    document.getElementById('csv-field-wrap').style.display = 'block';
+  }
+  // Always show setup screen — user must click the button
+});
+</script>
 </body>
 </html>
